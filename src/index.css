@@ -72,4 +72,13 @@ h3 {
   .animate-pop-in {
     animation: pop-in 0.3s ease-out both;
   }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    25% { transform: translateY(-8px) rotate(1deg); }
+    50% { transform: translateY(-4px) rotate(-1deg); }
+    75% { transform: translateY(-12px) rotate(0.5deg); }
+  }
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
 } 

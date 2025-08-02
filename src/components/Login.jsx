@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import useAuth from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import FloatingImage from './FloatingImage';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -39,6 +40,8 @@ export default function Login() {
   return (
     <main className="flex items-center justify-center min-h-screen">
       <div className="glass p-8 max-w-md w-full">
+        <FloatingImage />
+        
         <h1 className="text-2xl font-bold mb-6 text-center">
           {isSignUp ? 'Registrati' : 'Accedi'} a GameLife
         </h1>
