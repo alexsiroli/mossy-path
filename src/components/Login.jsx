@@ -38,10 +38,10 @@ export default function Login() {
   };
 
   return (
-    <main className="flex items-center justify-center min-h-screen">
+    <main className="flex flex-col items-center justify-center min-h-screen">
+      <FloatingImage />
+      
       <div className="glass p-8 max-w-md w-full">
-        <FloatingImage />
-        
         <h1 className="text-2xl font-bold mb-6 text-center">
           {isSignUp ? 'Registrati' : 'Accedi'} a GameLife
         </h1>

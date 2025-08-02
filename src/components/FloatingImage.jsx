@@ -1,21 +1,14 @@
 export default function FloatingImage() {
   return (
-    <div className="flex justify-center mb-8">
+    <div className="flex justify-center mb-12">
       <div className="relative">
         {/* Immagine principale con animazione fluttuante */}
         <div className="animate-float">
-          <svg 
-            className="w-32 h-32 text-emerald-500 dark:text-emerald-400"
-            viewBox="0 0 24 24" 
-            fill="currentColor"
-          >
-            {/* Icona game controller stilizzata */}
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-3-3 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-            <circle cx="8" cy="12" r="1.5"/>
-            <circle cx="16" cy="12" r="1.5"/>
-            <circle cx="12" cy="8" r="1.5"/>
-            <circle cx="12" cy="16" r="1.5"/>
-          </svg>
+          <img 
+            src="/icons/icon-1024.png"
+            alt="GameLife"
+            className="w-32 h-32 rounded-2xl shadow-lg"
+          />
         </div>
         
         {/* Particelle decorative */}
