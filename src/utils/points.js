@@ -1,7 +1,7 @@
 import { load } from './storage';
 
-export function calculatePoints(dateKey, dataArg) {
-  const data = dataArg || load();
+export function calculatePoints(dateKey, dataArg, userId = null) {
+  const data = dataArg || load(userId);
   const comps = data.completions?.[dateKey] || {};
   const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const viewDate = new Date(dateKey + 'T00:00:00');

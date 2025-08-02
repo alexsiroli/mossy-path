@@ -3,6 +3,7 @@ import { load, save } from '../utils/storage';
 import TaskItem from './TaskItem';
 import SectionCard from './SectionCard';
 import { calculatePoints } from '../utils/points';
+import useAuth from '../hooks/useAuth';
 
 const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -11,7 +12,8 @@ function formatKey(dateObj) {
 }
 
 export default function Dashboard() {
-  const [data, setData] = useState(load());
+  const { user } = useAuth();
+  const [data, setData] = useState(load(user?.uid));
 
   // Data navigation
   const [viewDate, setViewDate] = useState(new Date());
@@ -21,18 +23,18 @@ export default function Dashboard() {
 
   // Refresh completions when changing day or loading new data
   useEffect(() => {
-    setCompletions(load().completions?.[dateKey] || {});
-  }, [dateKey]);
+    setCompletions(load(user?.uid).completions?.[dateKey] || {});
+  }, [dateKey, user?.uid]);
 
   // Persist completions
   useEffect(() => {
-    const current = load();
+    const current = load(user?.uid);
     save({
       ...current,
       completions: { ...(current.completions || {}), [dateKey]: completions },
-    });
-    setData(load());
-  }, [completions, dateKey]);
+    }, user?.uid);
+    setData(load(user?.uid));
+  }, [completions, dateKey, user?.uid]);
 
   const isWeekday = (d) => {
     const day = d.getDay();
@@ -114,7 +116,7 @@ export default function Dashboard() {
   /*
     Calcolo punti
   */
-  const countPoints = () => calculatePoints(dateKey, data);
+  const countPoints = () => calculatePoints(dateKey, data, user?.uid);
 
   /*
     Aggiunta attività specifica
@@ -124,15 +126,15 @@ export default function Dashboard() {
 
   const addSpecific = () => {
     if (!newName.trim()) return;
-    const updated = load();
+    const updated = load(user?.uid);
     const list = updated.dailySpecific?.[dateKey] || [];
     const newTask = { name: newName.trim(), partOfDay: newPart };
     const newDailySpecific = {
       ...(updated.dailySpecific || {}),
       [dateKey]: [...list, newTask],
     };
-    save({ ...updated, dailySpecific: newDailySpecific });
-    setData(load());
+    save({ ...updated, dailySpecific: newDailySpecific }, user?.uid);
+    setData(load(user?.uid));
     setNewName('');
   };
 
@@ -162,7 +164,7 @@ export default function Dashboard() {
       {/* Section renderer helper */}
       {[
         { title: 'Attività base', items: baseTasks },
-        { title: 'Sonno / Sveglia', items: sleepTasks },
+        { title: 'Sonno', items: sleepTasks },
         { title: 'Mattina', items: morningTasks },
         { title: 'Pomeriggio', items: afternoonTasks },
         { title: 'Malus', items: malusTasks },
@@ -180,7 +182,7 @@ export default function Dashboard() {
                   onDelete={
                     t.isSpecific
                       ? () => {
-                          const updated = load();
+                          const updated = load(user?.uid);
                           const list = (updated.dailySpecific?.[dateKey] || []).filter(
                             (_, i) => i !== t.specIndex
                           );
@@ -188,8 +190,8 @@ export default function Dashboard() {
                             ...(updated.dailySpecific || {}),
                             [dateKey]: list,
                           };
-                          save({ ...updated, dailySpecific: newDailySpecific });
-                          setData(load());
+                          save({ ...updated, dailySpecific: newDailySpecific }, user?.uid);
+                          setData(load(user?.uid));
                         }
                       : undefined
                   }

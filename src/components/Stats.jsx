@@ -1,13 +1,16 @@
 import { load } from '../utils/storage';
-import { calculatePoints } from '../utils/points';
+import useAuth from '../hooks/useAuth';
 
 function calcPointsForDay(data, dateKey) {
   const comps = data.completions?.[dateKey] || {};
-  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const viewDate = new Date(dateKey + 'T00:00:00');
-  const weekdayName = weekdays[viewDate.getDay()];
-  const isWeekday = viewDate.getDay() !== 0 && viewDate.getDay() !== 6;
   let pts = 0;
+  const viewDate = new Date(dateKey);
+  const weekdayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][viewDate.getDay()];
+  const isWeekday = (d) => {
+    const day = d.getDay();
+    return day !== 0 && day !== 6;
+  };
+
   data.baseActivities?.forEach((_, idx) => {
     if (comps[`base-${idx}`]) pts += 10;
   });
@@ -39,7 +42,8 @@ function calcPointsForDay(data, dateKey) {
 }
 
 export default function Stats() {
-  const data = load();
+  const { user } = useAuth();
+  const data = load(user?.uid);
   const today = new Date();
   const rows = [];
   for (let i = 0; i < 30; i++) {
@@ -50,7 +54,7 @@ export default function Stats() {
     const nowMidnight = new Date();
     nowMidnight.setHours(0, 0, 0, 0);
     if (d > nowMidnight) continue;
-    const pts = calculatePoints(key, data);
+    const pts = calcPointsForDay(data, key);
     rows.push({ key, pts });
   }
 

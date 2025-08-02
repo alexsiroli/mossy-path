@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 
 export default function useDarkMode() {
   const [enabled, setEnabled] = useState(() => {
-    if (typeof window === 'undefined') return false;
+    if (typeof window === 'undefined') return true; // Default to dark mode
     const ls = localStorage.getItem('theme');
     if (ls) return ls === 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return true; // Default to dark mode instead of system preference
   });
 
   useEffect(() => {

@@ -8,9 +8,9 @@ export default function Header() {
   const { logout } = useAuth();
 
   return (
-    <header className="fixed top-2 inset-x-4 sm:inset-x-0 sm:max-w-screen-md sm:mx-auto bg-emerald-200/30 dark:bg-emerald-900/25 backdrop-blur-xl ring-1 ring-emerald-300/50 dark:ring-emerald-800/40 shadow-xl rounded-2xl px-5 py-3 flex items-center gap-4 text-sm z-30">
+    <header className="fixed top-2 inset-x-4 sm:inset-x-0 sm:max-w-screen-md sm:mx-auto bg-white/30 dark:bg-black/30 backdrop-blur-xl ring-1 ring-emerald-200/60 dark:ring-emerald-700/40 shadow-xl rounded-2xl px-5 py-3 flex items-center gap-4 text-sm z-30">
       <nav className="flex items-center gap-4 flex-1">
-        <span className="sm:hidden text-2xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">GameLife</span>
+        <span className="sm:hidden text-2xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">MossyPath</span>
         <NavLink
           to="/dashboard"
           className={({ isActive }) =>

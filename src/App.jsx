@@ -5,12 +5,13 @@ import Stats from './components/Stats';
 import Settings from './components/Settings';
 import Layout from './components/Layout';
 import Login from './components/Login';
-import { isConfigured } from './utils/storage';
+import { isConfigured, isNewUser } from './utils/storage';
 import useAuth from './hooks/useAuth';
 
 export default function App() {
-  const configured = isConfigured();
   const { user, loading } = useAuth();
+  const configured = isConfigured(user?.uid);
+  const newUser = isNewUser(user?.uid);
 
   if (loading) {
     return (
@@ -28,7 +29,15 @@ export default function App() {
     <Routes>
       <Route
         path="/"
-        element={configured ? <Navigate to="/dashboard" replace /> : <SetupWizard />}
+        element={
+          newUser ? (
+            <SetupWizard />
+          ) : configured ? (
+            <Navigate to="/dashboard" replace />
+          ) : (
+            <SetupWizard />
+          )
+        }
       />
       <Route
         element={<Layout />}

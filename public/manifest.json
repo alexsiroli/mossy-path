@@ -1,6 +1,6 @@
 {
-  "name": "GameLife",
-  "short_name": "GameLife",
+  "name": "MossyPath",
+  "short_name": "MossyPath",
   "description": "Gamifica le tue abitudini quotidiane",
   "start_url": "/",
   "scope": "/",

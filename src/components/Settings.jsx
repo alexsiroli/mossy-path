@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { load, save, clear } from '../utils/storage';
 import { useNavigate } from 'react-router-dom';
+import useAuth from '../hooks/useAuth';
 
 export default function Settings() {
   const navigate = useNavigate();
-  const initial = load();
+  const { user } = useAuth();
+  const initial = load(user?.uid);
 
   const [baseActivities, setBaseActivities] = useState(initial.baseActivities || Array(5).fill(''));
   const [bedtime, setBedtime] = useState(initial.sleep?.bedtime || '22:30');
@@ -13,20 +15,20 @@ export default function Settings() {
   const [dailyActivities, setDailyActivities] = useState(initial.dailyActivities || []);
 
   const handleSave = () => {
-    const data = load();
+    const data = load(user?.uid);
     save({
       ...data,
       baseActivities,
       sleep: { bedtime, wakeTime },
       malus,
       dailyActivities,
-    });
+    }, user?.uid);
     alert('Impostazioni salvate');
   };
 
   const resetData = () => {
     if (confirm('Sicuro di voler cancellare tutti i dati e ricominciare?')) {
-      clear();
+      clear(user?.uid);
       navigate('/');
       window.location.reload();
     }
