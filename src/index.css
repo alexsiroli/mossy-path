@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply m-0 font-sans bg-gradient-to-br from-gray-50 via-gray-100 to-emerald-50 dark:from-black dark:via-neutral-900 dark:to-black text-gray-900 dark:text-gray-100;
+  }
+
+  a {
+    @apply text-emerald-600 dark:text-emerald-400 hover:underline;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-neutral-100/70 dark:bg-neutral-800/80 backdrop-blur-md shadow-lg rounded-xl;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center mt-4 px-4 py-2 rounded-lg font-semibold text-white shadow-md hover:shadow-lg active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-gradient-to-r from-emerald-500 to-lime-500 hover:from-emerald-600 hover:to-lime-600;
+  }
+  .btn-danger {
+    @apply btn bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center px-3 py-2 rounded-lg text-gray-700 dark:text-gray-200 bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 shadow transition active:scale-95 disabled:opacity-50;
+  }
+  .select {
+    @apply w-full border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 py-2 pl-3 pr-10 my-2 text-sm appearance-none relative;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23999' viewBox='0 0 20 20'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-position: right 0.6rem center;
+    background-repeat: no-repeat;
+    background-size: 1rem 1rem;
+  }
+}
+
+main {
+  @apply p-4 max-w-screen-md mx-auto;
+}
+
+input,
+select {
+  @apply w-full border border-gray-300 rounded px-3 py-2 my-2 bg-white dark:bg-gray-800 dark:border-gray-600;
+}
+
+h1 {
+  @apply text-2xl font-bold mb-4;
+}
+
+h2 {
+  @apply text-xl font-semibold mt-6 mb-2;
+}
+
+h3 {
+  @apply text-lg font-semibold mt-4;
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  @keyframes pop-in {
+    0% { transform: scale(0.6); }
+    60% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+
+  .animate-pop-in {
+    animation: pop-in 0.3s ease-out both;
+  }
+} 
