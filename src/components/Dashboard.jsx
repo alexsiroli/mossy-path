@@ -14,6 +14,7 @@ function formatKey(dateObj) {
 export default function Dashboard() {
   const { user } = useAuth();
   const [data, setData] = useState(load(user?.uid));
+  const [isAnimating, setIsAnimating] = useState(true);
 
   // Data navigation
   const [viewDate, setViewDate] = useState(new Date());
@@ -35,6 +36,14 @@ export default function Dashboard() {
     }, user?.uid);
     setData(load(user?.uid));
   }, [completions, dateKey, user?.uid]);
+
+  // Animazione di entrata
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsAnimating(false);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const isWeekday = (d) => {
     const day = d.getDay();
@@ -64,7 +73,7 @@ export default function Dashboard() {
   // Sleep
   if (data.sleep) {
     const bed = { key: 'sleep-bed', label: `Andare a letto entro ${data.sleep.bedtime}` };
-    const wake = { key: 'sleep-wake', label: `Sveglia entro ${data.sleep.wakeTime}` };
+    const wake = { key: 'sleep-wake', label: `Sveglia entro ${data.sleep.wakeup}` };
     tasks.push(bed, wake);
     sleepTasks.push(bed, wake);
   }
@@ -101,9 +110,13 @@ export default function Dashboard() {
   });
 
   // Malus
-  data.malus?.forEach((m, idx) => {
-    if (m.weekdaysOnly && !isWeekday(viewDate)) return;
-    const obj = { key: `malus-${idx}`, label: m.name };
+  data.malus?.forEach((malus, idx) => {
+    // Se malus è una stringa, usala direttamente
+    const malusText = typeof malus === 'string' ? malus : malus.name;
+    const weekdaysOnly = typeof malus === 'object' ? malus.weekdaysOnly : false;
+    
+    if (weekdaysOnly && !isWeekday(viewDate)) return;
+    const obj = { key: `malus-${idx}`, label: malusText };
     tasks.push(obj);
     malusTasks.push(obj);
   });
@@ -148,10 +161,14 @@ export default function Dashboard() {
   };
 
   return (
-    <main>
-      <h1>Dashboard</h1>
+    <main className={`transition-all duration-1000 ease-out ${
+      isAnimating 
+        ? 'opacity-0 translate-y-8 scale-95' 
+        : 'opacity-100 translate-y-0 scale-100'
+    }`}>
+      <h1 className="animate-fade-in-up">Dashboard</h1>
 
-      <div className="flex items-center gap-4 mb-4 text-sm">
+      <div className="flex items-center gap-4 mb-4 text-sm animate-fade-in-delay">
         <button className="btn-ghost" onClick={() => changeDay(-1)}>
           ← Giorno precedente
         </button>
@@ -169,9 +186,9 @@ export default function Dashboard() {
         { title: 'Pomeriggio', items: afternoonTasks },
         { title: 'Malus', items: malusTasks },
       ].map(
-        ({ title, items }) =>
+        ({ title, items }, index) =>
           items.length > 0 && (
-            <SectionCard key={title} title={title}>
+            <SectionCard key={title} title={title} className={`animate-fade-in-delay-${Math.min(index + 2, 4)}`}>
               {items.map((t) => (
                 <TaskItem
                   key={t.key}
@@ -202,7 +219,7 @@ export default function Dashboard() {
       )}
 
       {/* Progress bar */}
-      <div className="my-4">
+      <div className="my-4 animate-fade-in-delay-3">
         {(() => {
           const pts = countPoints();
           const color = pts >= 80 ? 'bg-green-500' : pts >= 50 ? 'bg-yellow-500' : 'bg-red-500';
@@ -218,8 +235,8 @@ export default function Dashboard() {
         <p className="text-sm mt-1">Punti del giorno: {countPoints()} / 100{isFuture && ' (solo lettura)'}</p>
       </div>
 
-      <hr />
-      <h3>Aggiungi attività specifica</h3>
+      <hr className="animate-fade-in-delay-4" />
+      <h3 className="animate-fade-in-delay-4">Aggiungi attività specifica</h3>
       <input
         type="text"
         placeholder="Nome attività"

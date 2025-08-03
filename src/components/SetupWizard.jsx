@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { save } from '../utils/storage';
 import { ChevronRightIcon } from '@heroicons/react/24/solid';
+import { CubeIcon } from '@heroicons/react/24/outline';
 import useAuth from '../hooks/useAuth';
 
 export default function SetupWizard() {
@@ -9,6 +10,8 @@ export default function SetupWizard() {
   const [direction, setDirection] = useState('right');
   const [key, setKey] = useState(0);
   const [showValidation, setShowValidation] = useState(false);
+  const [showCompletion, setShowCompletion] = useState(false);
+  const [completionProgress, setCompletionProgress] = useState(0);
   const [data, setData] = useState({
     baseActivities: ['', '', '', '', ''],
     sleep: { bedtime: '23:00', wakeup: '07:00' },
@@ -17,6 +20,125 @@ export default function SetupWizard() {
   });
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  // Lista delle abitudini casuali
+  const randomHabits = [
+    'Rifai il letto',
+    'Apri finestre 10 min',
+    'Bevi 1 bicchiere d\'acqua al risveglio',
+    'Lavati i denti 2 volte',
+    'Usa filo interdentale 1 volta',
+    'Collutorio 1 volta',
+    'Doccia 1 volta',
+    'Idrata la pelle 1 volta',
+    'Bevi 8 bicchieri d\'acqua',
+    'Mangia 1 frutto',
+    'Mangia 1 porzione di verdura',
+    'Colazione seduto 10 min',
+    'Cammina 20 min',
+    'Stretching 5 min',
+    '20 squat',
+    '10 flessioni',
+    'Plank 1 min',
+    'Respira 10 respiri profondi',
+    'Medita 5 min',
+    'Leggi 5 pagine',
+    'Scrivi 3 priorità',
+    'Rivedi le priorità a fine giorno',
+    'Diario: 3 righe',
+    'Gratitudine: 1 cosa',
+    'No social 30 min al risveglio',
+    'Schermo off 30 min prima di dormire',
+    'Dormi 7 ore',
+    'A letto entro 23:30',
+    'Archivia 10 email',
+    'Elimina 5 foto',
+    'Disinstalla 1 app inutile',
+    'Backup rapido 1 volta',
+    'Riordina 10 min',
+    'Lava i piatti entro 30 min',
+    'Pulisci piano cucina 1 volta',
+    'Butta 1 oggetto inutile',
+    'Controlla il frigo 1 volta',
+    'Prepara vestiti per domani',
+    'Registra 1 spesa',
+    'Controlla saldo 1 volta',
+    'Risparmia 2 €',
+    'Bevi 1 tisana senza zucchero',
+    '3 pause postura',
+    'Pausa occhi 3×20s',
+    '10 min all\'aria aperta',
+    '1 messaggio a un amico',
+    'Fai 1 complimento',
+    '5 min di ordine digitale',
+    'Caffè ≤2',
+    'Alcol 0 unità'
+  ];
+
+  // Lista dei malus casuali
+  const randomMalus = [
+    'Mangiare cibo spazzatura',
+    'Bere bevande zuccherate',
+    'Saltare la colazione',
+    'Mangiare troppo velocemente',
+    'Mangiare davanti alla TV',
+    'Bere alcolici',
+    'Fumare sigarette',
+    'Usare il telefono a letto',
+    'Guardare social media >2h',
+    'Giocare ai videogiochi >2h',
+    'Guardare TV >3h',
+    'Dormire <6 ore',
+    'Andare a letto dopo mezzanotte',
+    'Saltare la doccia',
+    'Non lavarsi i denti',
+    'Non fare esercizio fisico',
+    'Stare seduti >8h',
+    'Non bere acqua',
+    'Mangiare fuori orario',
+    'Spendere soldi inutili',
+    'Comprare online impulsivamente',
+    'Mangiare dolci',
+    'Bere caffè >3 volte',
+    'Saltare i pasti',
+    'Mangiare in piedi',
+    'Non fare stretching',
+    'Non meditare',
+    'Non leggere',
+    'Non scrivere nel diario',
+    'Non controllare le priorità',
+    'Non fare backup',
+    'Non riordinare',
+    'Non lavare i piatti',
+    'Non pulire la casa',
+    'Non buttare oggetti inutili',
+    'Non controllare il frigo',
+    'Non preparare i vestiti',
+    'Non registrare le spese',
+    'Non controllare il saldo',
+    'Non risparmiare',
+    'Non bere tisane',
+    'Non fare pause postura',
+    'Non fare pause occhi',
+    'Non uscire all\'aria aperta',
+    'Non contattare amici',
+    'Non fare complimenti',
+    'Non ordinare il digitale',
+    'Bere >2 caffè',
+    'Bere alcolici'
+  ];
+
+  // Funzione per generare un'abitudine casuale
+  const generateRandomHabit = () => {
+    const randomIndex = Math.floor(Math.random() * randomHabits.length);
+    return randomHabits[randomIndex];
+  };
+
+  // Funzione per generare un malus casuale
+  const generateRandomMalus = () => {
+    const randomIndex = Math.floor(Math.random() * randomMalus.length);
+    return randomMalus[randomIndex];
+  };
 
   const totalSteps = 7; // Aumentato per includere le due pagine di benvenuto
 
@@ -58,7 +180,28 @@ export default function SetupWizard() {
 
   const handleSave = () => {
     save(data, user?.uid);
-    navigate('/dashboard');
+    setShowCompletion(true);
+    
+    // Avvia il timer per il cerchio di completamento (5 secondi)
+    const startTime = Date.now();
+    const duration = 5000; // 5 secondi
+    
+    const updateProgress = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min((elapsed / duration) * 100, 100);
+      setCompletionProgress(progress);
+      
+      if (progress < 100) {
+        requestAnimationFrame(updateProgress);
+      } else {
+        // Dopo 10 secondi, naviga alla dashboard con animazione
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 500);
+      }
+    };
+    
+    requestAnimationFrame(updateProgress);
   };
 
   const updateBaseActivity = (index, value) => {
@@ -118,7 +261,66 @@ export default function SetupWizard() {
     }
   };
 
+  const renderCompletionStep = () => {
+    return (
+      <div className="min-h-[60vh] flex flex-col justify-center items-center">
+        <div className="animate-fade-in-up text-center">
+          <h1 className="text-3xl font-bold mb-6">🎉 Complimenti!</h1>
+          <p className="text-lg mb-8 px-4">
+            Hai completato la configurazione di MossyPath.<br />
+            Buona fortuna per il tuo percorso!
+          </p>
+          
+          {/* Cerchio di progresso */}
+          <div className="relative w-32 h-32 mx-auto mb-8">
+            {/* Cerchio di sfondo */}
+            <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 120 120">
+              <circle
+                cx="60"
+                cy="60"
+                r="54"
+                fill="none"
+                stroke="#e5e7eb"
+                strokeWidth="8"
+                className="dark:stroke-gray-600"
+              />
+              {/* Cerchio di progresso */}
+              <circle
+                cx="60"
+                cy="60"
+                r="54"
+                fill="none"
+                stroke="#10b981"
+                strokeWidth="8"
+                strokeLinecap="round"
+                strokeDasharray={`${2 * Math.PI * 54}`}
+                strokeDashoffset={`${2 * Math.PI * 54 * (1 - completionProgress / 100)}`}
+                className="transition-all duration-100 ease-linear"
+              />
+            </svg>
+            
+            {/* Testo centrale */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                {Math.round(completionProgress)}%
+              </span>
+            </div>
+          </div>
+          
+          <p className="text-sm text-gray-600 dark:text-gray-400 px-4">
+            Preparazione in corso...
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   const renderStep = () => {
+    // Se siamo nella schermata di completamento, mostra il passo 8
+    if (showCompletion) {
+      return renderCompletionStep();
+    }
+    
     switch (step) {
       case 1:
         return (
@@ -180,19 +382,29 @@ export default function SetupWizard() {
                   
                   return (
                     <div key={index} className={index > 0 ? "mt-2" : ""}>
-                      <input
-                        type="text"
-                        placeholder={`Attività ${index + 1}`}
-                        value={activity}
-                        onChange={(e) => updateBaseActivity(index, e.target.value)}
-                        className={`w-full h-12 px-3 py-2 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all duration-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
-                          hasContent 
-                            ? 'border-green-500 ring-green-500' 
-                            : isEmpty && showValidation
-                            ? 'border-red-500 ring-red-500' 
-                            : 'border-gray-300 dark:border-gray-600'
-                        }`}
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder={`Attività ${index + 1}`}
+                          value={activity}
+                          onChange={(e) => updateBaseActivity(index, e.target.value)}
+                          className={`w-full h-12 px-3 py-2 pr-12 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all duration-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                            hasContent 
+                              ? 'border-green-500 ring-green-500' 
+                              : isEmpty && showValidation
+                              ? 'border-red-500 ring-red-500' 
+                              : 'border-gray-300 dark:border-gray-600'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => updateBaseActivity(index, generateRandomHabit())}
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 text-gray-400 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors duration-200 hover:scale-110"
+                          title="Genera abitudine casuale"
+                        >
+                          <CubeIcon className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -346,19 +558,29 @@ export default function SetupWizard() {
                   
                   return (
                     <div key={index} className={index > 0 ? "mt-2" : ""}>
-                      <input
-                        type="text"
-                        placeholder={`Malus ${index + 1}`}
-                        value={malus}
-                        onChange={(e) => updateMalus(index, e.target.value)}
-                        className={`w-full h-12 px-3 py-2 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all duration-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
-                          hasContent 
-                            ? 'border-green-500 ring-green-500' 
-                            : isEmpty && showValidation
-                            ? 'border-red-500 ring-red-500' 
-                            : 'border-gray-300 dark:border-gray-600'
-                        }`}
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder={`Malus ${index + 1}`}
+                          value={malus}
+                          onChange={(e) => updateMalus(index, e.target.value)}
+                          className={`w-full h-12 px-3 py-2 pr-12 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all duration-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                            hasContent 
+                              ? 'border-green-500 ring-green-500' 
+                              : isEmpty && showValidation
+                              ? 'border-red-500 ring-red-500' 
+                              : 'border-gray-300 dark:border-gray-600'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => updateMalus(index, generateRandomMalus())}
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 text-gray-400 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors duration-200 hover:scale-110"
+                          title="Genera malus casuale"
+                        >
+                          <CubeIcon className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -447,70 +669,74 @@ export default function SetupWizard() {
         <div 
           key={key}
           className={`glass p-6 max-w-md mx-auto w-full ${
-            direction === 'right' ? 'animate-slide-in-right' : 'animate-slide-in-left'
+            showCompletion ? '' : direction === 'right' ? 'animate-slide-in-right' : 'animate-slide-in-left'
           }`}
         >
           {renderStep()}
         </div>
         
-        {/* Indicatori di progresso decorativi */}
-        <div className="flex justify-center items-center space-x-2 mt-8 mb-8">
-          {Array.from({ length: totalSteps }, (_, i) => (
-            <div
-              key={i}
-              className={`rounded-full transition-all duration-300 ${
-                i < step 
-                  ? 'w-4 h-4 bg-emerald-500 animate-bounce-in' 
-                  : i === step - 1 
-                  ? 'w-4 h-4 bg-emerald-400 animate-pulse' 
-                  : 'w-3 h-3 bg-gray-300 dark:bg-gray-600'
-              }`}
-            />
-          ))}
-        </div>
+        {/* Indicatori di progresso decorativi - nascosti durante il completamento */}
+        {!showCompletion && (
+          <div className="flex justify-center items-center space-x-2 mt-8 mb-8">
+            {Array.from({ length: totalSteps }, (_, i) => (
+              <div
+                key={i}
+                className={`rounded-full transition-all duration-300 ${
+                  i < step 
+                    ? 'w-4 h-4 bg-emerald-500 animate-bounce-in' 
+                    : i === step - 1 
+                    ? 'w-4 h-4 bg-emerald-400 animate-pulse' 
+                    : 'w-3 h-3 bg-gray-300 dark:bg-gray-600'
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Barra di progresso e navigazione */}
-      <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/30 dark:bg-black/30 backdrop-blur-xl">
-        <div className="max-w-md mx-auto">
-          {/* Pulsanti di navigazione */}
-          <div className="flex justify-between items-center py-1">
-            {step > 1 ? (
-              <button onClick={handlePrev} className="btn-ghost h-10 flex items-center justify-center translate-y-1">
-                Indietro
-              </button>
-            ) : (
-              <div className="w-16 h-10"></div>
-            )}
-            
-            {step < totalSteps ? (
-              <button 
-                onClick={handleNext} 
-                className="btn-primary flex items-center justify-center gap-2 h-10"
-              >
-                Continua
-                <ChevronRightIcon className="w-4 h-4" />
-              </button>
-            ) : (
-              <button 
-                onClick={() => {
-                  // Validazione finale per i malus
-                  const allMalusFilled = data.malus.every(malus => malus.trim() !== '');
-                  if (!allMalusFilled) {
-                    setShowValidation(true);
-                    return;
-                  }
-                  handleSave();
-                }}
-                className="btn-primary flex items-center justify-center gap-2 h-10"
-              >
-                Inizia MossyPath!
-                <ChevronRightIcon className="w-4 h-4" />
-              </button>
-            )}
+      {/* Barra di progresso e navigazione - nascosta durante il completamento */}
+      {!showCompletion && (
+        <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/30 dark:bg-black/30 backdrop-blur-xl">
+          <div className="max-w-md mx-auto">
+            {/* Pulsanti di navigazione */}
+            <div className="flex justify-between items-center py-1">
+              {step > 1 ? (
+                <button onClick={handlePrev} className="btn-ghost h-10 flex items-center justify-center translate-y-1">
+                  Indietro
+                </button>
+              ) : (
+                <div className="w-16 h-10"></div>
+              )}
+              
+              {step < totalSteps ? (
+                <button 
+                  onClick={handleNext} 
+                  className="btn-primary flex items-center justify-center gap-2 h-10 -translate-y-2"
+                >
+                  Continua
+                  <ChevronRightIcon className="w-4 h-4" />
+                </button>
+              ) : (
+                <button 
+                  onClick={() => {
+                    // Validazione finale per i malus
+                    const allMalusFilled = data.malus.every(malus => malus.trim() !== '');
+                    if (!allMalusFilled) {
+                      setShowValidation(true);
+                      return;
+                    }
+                    handleSave();
+                  }}
+                  className="btn-primary flex items-center justify-center gap-2 h-10 -translate-y-2"
+                >
+                  Inizia MossyPath!
+                  <ChevronRightIcon className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </main>
   );
 } 

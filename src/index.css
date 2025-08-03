@@ -134,10 +134,10 @@ h3 {
     100% { opacity: 1; transform: scale(1); }
   }
   .animate-bounce-in {
-    animation: bounce-in 0.8s ease-out 1.8s both;
+    animation: bounce-in 0.8s ease-out 1.2s both;
   }
   .animate-bounce-in-delay {
-    animation: bounce-in 0.8s ease-out 2s both;
+    animation: bounce-in 0.8s ease-out 1.4s both;
   }
   @keyframes shake {
     0%, 100% { transform: translateX(0); }

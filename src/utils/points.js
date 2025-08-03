@@ -35,8 +35,10 @@ export function calculatePoints(dateKey, dataArg, userId = null) {
   if (partDone('morning')) pts += 10;
   if (partDone('afternoon')) pts += 10;
   // malus
-  data.malus?.forEach((m, idx) => {
-    if (m.weekdaysOnly && !isWeekday) return;
+  data.malus?.forEach((malus, idx) => {
+    // Se malus è una stringa, non ha weekdaysOnly
+    const weekdaysOnly = typeof malus === 'object' ? malus.weekdaysOnly : false;
+    if (weekdaysOnly && !isWeekday) return;
     if (comps[`malus-${idx}`]) pts -= 10;
   });
   return pts;
