@@ -749,7 +749,7 @@ export default function SetupWizard() {
           <div className="max-w-md mx-auto">
             <div className="flex justify-between items-center">
               {step > 1 ? (
-                <button onClick={handlePrev} className="btn-ghost h-10 flex items-center justify-center -translate-y-8">
+                <button onClick={handlePrev} className="btn-ghost h-10 flex items-center justify-center -translate-y-10 ml-4">
                   Indietro
                 </button>
               ) : (
@@ -759,7 +759,7 @@ export default function SetupWizard() {
               {step < totalSteps ? (
                 <button 
                   onClick={handleNext} 
-                  className="btn-primary flex items-center justify-center gap-2 h-10 -translate-y-10"
+                  className="btn-primary flex items-center justify-center gap-2 h-10 -translate-y-12 mr-4"
                 >
                   Continua
                   <ChevronRightIcon className="w-4 h-4" />
@@ -778,7 +778,7 @@ export default function SetupWizard() {
                     }
                     handleSave();
                   }}
-                  className="btn-primary flex items-center justify-center gap-2 h-10 -translate-y-10"
+                  className="btn-primary flex items-center justify-center gap-2 h-10 -translate-y-12 mr-4"
                 >
                   Inizia MossyPath!
                   <ChevronRightIcon className="w-4 h-4" />
