@@ -3,6 +3,7 @@ import useAuth from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import FloatingImage from './FloatingImage';
 import useDarkMode from '../hooks/useDarkMode';
+import { SunIcon, MoonIcon } from '@heroicons/react/24/outline';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -11,12 +12,11 @@ export default function Login() {
   const [error, setError] = useState('');
   const { signIn, signUp, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
-  const [darkMode] = useDarkMode();
+  const [darkMode, setDarkMode] = useDarkMode();
 
-  // Ensure dark mode is applied immediately
-  useEffect(() => {
-    document.documentElement.classList.add('dark');
-  }, []);
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,6 +47,19 @@ export default function Login() {
   return (
     <main className="flex flex-col items-center justify-center min-h-screen">
       <FloatingImage />
+      
+      {/* Bottone toggle tema */}
+      <button
+        onClick={toggleDarkMode}
+        className="fixed top-4 right-4 p-2 rounded-full bg-white/20 dark:bg-black/20 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 hover:bg-white/30 dark:hover:bg-black/30 transition-all duration-300 z-50 cursor-pointer"
+        aria-label="Toggle dark mode"
+      >
+        {darkMode ? (
+          <SunIcon className="w-5 h-5 text-yellow-500" />
+        ) : (
+          <MoonIcon className="w-5 h-5 text-gray-700" />
+        )}
+      </button>
       
       <div className="glass p-8 max-w-md w-full animate-fade-in-up">
         <h1 className="text-2xl font-bold mb-6 text-center animate-fade-in-delay">

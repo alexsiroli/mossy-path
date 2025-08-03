@@ -15,8 +15,8 @@ export default function App() {
 
   if (loading) {
     return (
-      <main className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Caricamento...</div>
+      <main className="flex items-center justify-center min-h-screen bg-white dark:bg-black">
+        <div className="text-lg text-gray-900 dark:text-gray-100">Caricamento...</div>
       </main>
     );
   }
