@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { save } from '../utils/storage';
 import { ChevronRightIcon } from '@heroicons/react/24/solid';
 import { CubeIcon } from '@heroicons/react/24/outline';
+import { SunIcon, MoonIcon } from '@heroicons/react/24/outline';
 import useAuth from '../hooks/useAuth';
+import useDarkMode from '../hooks/useDarkMode';
 
 export default function SetupWizard() {
   const [step, setStep] = useState(1);
@@ -20,6 +22,11 @@ export default function SetupWizard() {
   });
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [darkMode, setDarkMode] = useDarkMode();
+
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+  };
 
   // Lista delle abitudini casuali
   const randomHabits = [
@@ -249,26 +256,43 @@ export default function SetupWizard() {
 
   const updateMalus = (index, value) => {
     const newMalus = [...data.malus];
-    newMalus[index] = value;
+    // Se il malus è una stringa, convertilo in oggetto
+    if (typeof newMalus[index] === 'string') {
+      newMalus[index] = { name: value, weekdaysOnly: true };
+    } else {
+      newMalus[index] = { ...newMalus[index], name: value };
+    }
     setData({ ...data, malus: newMalus });
     
     // Reset showValidation se tutti i malus sono completati
-    const updatedMalus = [...newMalus];
-    updatedMalus[index] = value;
-    const allMalusFilled = updatedMalus.every(malus => malus.trim() !== '');
+    const allMalusFilled = newMalus.every(malus => {
+      const name = typeof malus === 'string' ? malus : malus.name;
+      return name.trim() !== '';
+    });
     if (allMalusFilled) {
       setShowValidation(false);
     }
   };
 
+  const toggleMalusWeekdays = (index) => {
+    const newMalus = [...data.malus];
+    // Se il malus è una stringa, convertilo in oggetto
+    if (typeof newMalus[index] === 'string') {
+      newMalus[index] = { name: newMalus[index], weekdaysOnly: false };
+    } else {
+      newMalus[index] = { ...newMalus[index], weekdaysOnly: !newMalus[index].weekdaysOnly };
+    }
+    setData({ ...data, malus: newMalus });
+  };
+
   const renderCompletionStep = () => {
-    return (
-      <div className="min-h-[60vh] flex flex-col justify-center items-center">
+            return (
+          <div className="h-full flex flex-col justify-center items-center">
         <div className="animate-fade-in-up text-center">
           <h1 className="text-3xl font-bold mb-6">🎉 Complimenti!</h1>
           <p className="text-lg mb-8 px-4">
-            Hai completato la configurazione di MossyPath.<br />
-            Buona fortuna per il tuo percorso!
+            Hai completato la <strong className="text-emerald-600 dark:text-emerald-400">configurazione</strong> di <strong className="text-emerald-600 dark:text-emerald-400">MossyPath</strong>.<br />
+            Buona <strong className="text-emerald-600 dark:text-emerald-400">fortuna</strong> per il tuo <strong className="text-emerald-600 dark:text-emerald-400">percorso</strong>!
           </p>
           
           {/* Cerchio di progresso */}
@@ -324,11 +348,11 @@ export default function SetupWizard() {
     switch (step) {
       case 1:
         return (
-          <div className="text-center min-h-[60vh] flex flex-col justify-center">
+          <div className="text-center h-full flex flex-col justify-center">
             <div className="animate-fade-in-up">
-              <h1 className="text-3xl font-bold mb-6">Benvenuto in MossyPath!</h1>
+              <h1 className="text-3xl font-bold mb-6">Benvenuto in <span className="text-emerald-600 dark:text-emerald-400">MossyPath</span>!</h1>
               <p className="text-lg mb-4 px-4">
-                Il tuo compagno ideale per sviluppare buone abitudini e eliminare le cattive dalla tua vita.
+                Crea il <strong className="text-emerald-600 dark:text-emerald-400">giardino</strong> delle <strong className="text-emerald-600 dark:text-emerald-400">buone abitudini</strong>!
               </p>
             </div>
           </div>
@@ -336,14 +360,11 @@ export default function SetupWizard() {
 
       case 2:
         return (
-          <div className="text-center min-h-[60vh] flex flex-col justify-center">
+          <div className="text-center h-full flex flex-col justify-center">
             <div className="animate-fade-in-up">
-              <h1 className="text-3xl font-bold mb-6">Iniziamo il Viaggio</h1>
+              <h1 className="text-3xl font-bold mb-6">Iniziamo il <span className="text-emerald-600 dark:text-emerald-400">Viaggio</span></h1>
               <p className="text-lg mb-4 px-4">
-                Il nostro obiettivo è rendere questo processo divertente e gratificante, aiutandoti a raggiungere i tuoi traguardi attraverso la gamification.
-              </p>
-              <p className="text-gray-600 dark:text-gray-400 px-4">
-                Le prime due settimane possono essere le più impegnative, quindi non preoccuparti se all'inizio ti sembra difficile organizzarti!
+                Segui questi <strong className="text-emerald-600 dark:text-emerald-400">piccoli passi</strong> per iniziare con il <strong className="text-emerald-600 dark:text-emerald-400">piede giusto</strong> e costruire le tue <strong className="text-emerald-600 dark:text-emerald-400">abitudini positive</strong>.
               </p>
             </div>
           </div>
@@ -351,11 +372,11 @@ export default function SetupWizard() {
 
       case 3:
         return (
-          <div className="text-center min-h-[60vh] flex flex-col justify-center">
+          <div className="text-center h-full flex flex-col justify-center">
             <div className="animate-fade-in-up">
-              <h1 className="text-3xl font-bold mb-6">Il Sistema di Punti</h1>
+              <h1 className="text-3xl font-bold mb-6">Fai del tuo <span className="text-emerald-600 dark:text-emerald-400">meglio</span></h1>
               <p className="text-lg mb-4 px-4">
-                Ogni giorno, avrai una serie di attività da completare. Il tuo punteggio giornaliero va da 0 a 100 punti.
+                Ogni giorno, avrai una serie di <strong className="text-emerald-600 dark:text-emerald-400">attività</strong> da completare. Il tuo <strong className="text-emerald-600 dark:text-emerald-400">punteggio giornaliero</strong> va da 0 a 100 punti.
               </p>
             </div>
           </div>
@@ -363,25 +384,23 @@ export default function SetupWizard() {
 
       case 4:
         return (
-          <div className="min-h-[60vh] flex flex-col justify-center">
+          <div className="h-full flex flex-col justify-center">
             <div className="animate-fade-in-up">
-              <h1 className="text-3xl font-bold mb-6 text-center">Attività Base</h1>
-              <p className="mb-4 text-center px-4">
-                Le attività base sono compiti facili e veloci che devono essere svolti ogni giorno. 
-                Ogni attività completata vale 10 punti.
+              <h1 className="text-3xl font-bold mb-2 text-center text-emerald-600 dark:text-emerald-400">Attività Base</h1>
+              <p className="text-sm text-center text-gray-600 dark:text-gray-400 mb-4 px-2">
+                10 punti per ogni attività completata
               </p>
-              {showValidation && data.baseActivities.some(activity => activity.trim() === '') && (
-                <p className="text-red-500 text-sm text-center mb-4 px-4">
-                  Completa tutte le 5 attività per continuare
-                </p>
-              )}
-              <div className="px-4">
+              <p className="mb-2 text-center px-2">
+                Scegli 5 attività da fare <strong className="text-emerald-600 dark:text-emerald-400">ogni giorno</strong>.
+              </p>
+
+              <div className="px-2">
                 {data.baseActivities.map((activity, index) => {
                   const isEmpty = activity.trim() === '';
                   const hasContent = activity.trim() !== '';
                   
                   return (
-                    <div key={index} className={index > 0 ? "mt-2" : ""}>
+                    <div key={index} className={index > 0 ? "mt-0.5" : ""}>
                       <div className="relative">
                         <input
                           type="text"
@@ -390,9 +409,9 @@ export default function SetupWizard() {
                           onChange={(e) => updateBaseActivity(index, e.target.value)}
                           className={`w-full h-12 px-3 py-2 pr-12 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all duration-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
                             hasContent 
-                              ? 'border-green-500 ring-green-500' 
+                              ? 'border-green-500 dark:border-green-500 ring-green-500 dark:ring-green-500' 
                               : isEmpty && showValidation
-                              ? 'border-red-500 ring-red-500' 
+                              ? 'border-red-500 dark:border-red-500 ring-red-500 dark:ring-red-500' 
                               : 'border-gray-300 dark:border-gray-600'
                           }`}
                         />
@@ -402,7 +421,9 @@ export default function SetupWizard() {
                           className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 text-gray-400 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors duration-200 hover:scale-110"
                           title="Genera abitudine casuale"
                         >
-                          <CubeIcon className="w-5 h-5" />
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM7.5 6c.83 0 1.5.67 1.5 1.5S8.33 9 7.5 9 6 8.33 6 7.5 6.67 6 7.5 6zm3 4.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5zm3 4.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5z"/>
+                          </svg>
                         </button>
                       </div>
                     </div>
@@ -415,32 +436,34 @@ export default function SetupWizard() {
 
       case 5:
         return (
-          <div className="min-h-[60vh] flex flex-col justify-center">
+          <div className="h-full flex flex-col justify-center">
             <div className="animate-fade-in-up">
-              <h1 className="text-3xl font-bold mb-6 text-center">Sonno</h1>
-              <p className="mb-6 text-center px-4">
-                Indica l'orario in cui vuoi andare a letto e svegliarti nei giorni feriali. 
-                Ogni orario rispettato vale 15 punti nella tua giornata.
+              <h1 className="text-3xl font-bold mb-2 text-center text-emerald-600 dark:text-emerald-400">Sonno</h1>
+              <p className="text-sm text-center text-gray-600 dark:text-gray-400 mb-4 px-4">
+                15 punti per ogni orario rispettato
               </p>
-              <div className="space-y-4 px-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Orario di andare a letto:</label>
-                  <input
-                    type="time"
-                    value={data.sleep.bedtime}
-                    onChange={(e) => updateSleep('bedtime', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Orario di sveglia:</label>
-                  <input
-                    type="time"
-                    value={data.sleep.wakeup}
-                    onChange={(e) => updateSleep('wakeup', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                  />
-                </div>
+              <p className="mb-8 text-center px-4">
+                Scegli gli <strong className="text-emerald-600 dark:text-emerald-400">orari del sonno</strong> che vuoi <strong className="text-emerald-600 dark:text-emerald-400">rispettare</strong> nei <strong className="text-emerald-600 dark:text-emerald-400">giorni feriali</strong>.
+              </p>
+              <div className="px-4 space-y-4">
+                                  <div className="w-full">
+                    <label className="block text-sm font-medium mb-2">Orario di <span className="text-emerald-600 dark:text-emerald-400">andare a letto</span>:</label>
+                    <input
+                      type="time"
+                      value={data.sleep.bedtime}
+                      onChange={(e) => updateSleep('bedtime', e.target.value)}
+                      className="w-full px-4 py-4 text-xl border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <div className="w-full">
+                    <label className="block text-sm font-medium mb-2">Orario di <span className="text-emerald-600 dark:text-emerald-400">sveglia</span>:</label>
+                    <input
+                      type="time"
+                      value={data.sleep.wakeup}
+                      onChange={(e) => updateSleep('wakeup', e.target.value)}
+                      className="w-full px-4 py-4 text-xl border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
               </div>
             </div>
           </div>
@@ -448,22 +471,20 @@ export default function SetupWizard() {
 
       case 6:
         return (
-          <div className="min-h-[60vh] flex flex-col justify-center">
+          <div className="h-full flex flex-col justify-center">
             <div className="animate-fade-in-up">
-              <h1 className="text-3xl font-bold mb-6 text-center">Attività Quotidiane</h1>
-              <p className="mb-6 text-center px-4">
-                Aggiungi attività che desideri svolgere ogni mattina e pomeriggio. 
-                Se completi tutte le attività di una parte del giorno, accumuli 10 punti.
-                (Se vuoi aggiungerle in futuro, fai avanti)
+              <h1 className="text-3xl font-bold mb-2 text-center text-emerald-600 dark:text-emerald-400">Attività Quotidiane</h1>
+              <p className="text-sm text-center text-gray-600 dark:text-gray-400 mb-1 px-4">
+                10 punti attività della mattina
+              </p>
+              <p className="text-sm text-center text-gray-600 dark:text-gray-400 mb-6 px-4">
+                10 punti attività del pomeriggio
+              </p>
+              <p className="mb-8 text-center px-4">
+                Sono attività che devi fare con <strong className="text-emerald-600 dark:text-emerald-400">regolarità</strong> ma non tutti i giorni, più avanti avrai modo di <strong className="text-emerald-600 dark:text-emerald-400">aggiungerne</strong> quante ne vorrai.
               </p>
               
-              <div className="mb-4 px-4">
-                <button onClick={addDailyActivity} className="btn-primary w-full">
-                  Aggiungi Attività
-                </button>
-              </div>
-
-                            <div className="px-4 space-y-3 max-h-80 overflow-y-auto">
+              <div className="px-4 space-y-3 max-h-80 overflow-y-auto">
                 {data.dailyActivities.map((activity, index) => (
                   <div key={index} className="glass p-3">
                     <div className="flex justify-between items-center mb-3">
@@ -539,46 +560,60 @@ export default function SetupWizard() {
 
       case 7:
         return (
-          <div className="min-h-[60vh] flex flex-col justify-center">
+          <div className="h-full flex flex-col justify-center">
             <div className="animate-fade-in-up">
-              <h1 className="text-3xl font-bold mb-6 text-center">Malus</h1>
-              <p className="mb-4 text-center px-4">
-                I "Malus" sono cattive abitudini che desideri eliminare dalla tua vita. 
-                Ogni malus completato toglie 10 punti.
+              <h1 className="text-3xl font-bold mb-2 text-center text-emerald-600 dark:text-emerald-400">Malus</h1>
+              <p className="text-sm text-center text-gray-600 dark:text-gray-400 mb-4 px-4">
+                -10 punti per malus completato
               </p>
-              {showValidation && data.malus.some(malus => malus.trim() === '') && (
-                <p className="text-red-500 text-sm text-center mb-4 px-4">
-                  Completa tutti i 5 malus per continuare
-                </p>
-              )}
-              <div className="px-4">
+              <p className="mb-4 text-center px-4">
+                Scegli 5 attività da evitare nei <strong className="text-emerald-600 dark:text-emerald-400">giorni feriali</strong> o <strong className="text-emerald-600 dark:text-emerald-400">tutti i giorni</strong>
+              </p>
+
+              <div className="px-2">
                 {data.malus.map((malus, index) => {
-                  const isEmpty = malus.trim() === '';
-                  const hasContent = malus.trim() !== '';
+                  const malusName = typeof malus === 'string' ? malus : malus.name;
+                  const isEmpty = malusName.trim() === '';
+                  const hasContent = malusName.trim() !== '';
+                  const weekdaysOnly = typeof malus === 'string' ? true : malus.weekdaysOnly;
                   
                   return (
-                    <div key={index} className={index > 0 ? "mt-2" : ""}>
+                    <div key={index} className={index > 0 ? "mt-0.5" : ""}>
                       <div className="relative">
                         <input
                           type="text"
                           placeholder={`Malus ${index + 1}`}
-                          value={malus}
+                          value={malusName}
                           onChange={(e) => updateMalus(index, e.target.value)}
-                          className={`w-full h-12 px-3 py-2 pr-12 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all duration-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                          className={`w-full h-12 px-3 py-2 pr-20 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all duration-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
                             hasContent 
-                              ? 'border-green-500 ring-green-500' 
+                              ? 'border-green-500 dark:border-green-500 ring-green-500 dark:ring-green-500' 
                               : isEmpty && showValidation
-                              ? 'border-red-500 ring-red-500' 
+                              ? 'border-red-500 dark:border-red-500 ring-red-500 dark:ring-red-500' 
                               : 'border-gray-300 dark:border-gray-600'
                           }`}
                         />
                         <button
                           type="button"
                           onClick={() => updateMalus(index, generateRandomMalus())}
-                          className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 text-gray-400 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors duration-200 hover:scale-110"
+                          className="absolute right-12 top-1/2 transform -translate-y-1/2 p-2 text-gray-400 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors duration-200 hover:scale-110"
                           title="Genera malus casuale"
                         >
-                          <CubeIcon className="w-5 h-5" />
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM7.5 6c.83 0 1.5.67 1.5 1.5S8.33 9 7.5 9 6 8.33 6 7.5 6.67 6 7.5 6zm3 4.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5zm3 4.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5z"/>
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleMalusWeekdays(index)}
+                          className={`absolute right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 rounded flex items-center justify-center text-xs font-bold transition-all duration-200 hover:scale-110 ${
+                            weekdaysOnly 
+                              ? 'bg-emerald-500 text-white' 
+                              : 'bg-emerald-300 text-emerald-700'
+                          }`}
+                          title={weekdaysOnly ? "Giorni feriali (F)" : "Tutti i giorni (T)"}
+                        >
+                          {weekdaysOnly ? 'F' : 'T'}
                         </button>
                       </div>
                     </div>
@@ -623,9 +658,21 @@ export default function SetupWizard() {
       {/* Header decorativo animato */}
       <div className="relative pt-8 pb-4 px-4">
         <div className="max-w-md mx-auto">
+          {/* Toggle tema */}
+          <button
+            onClick={toggleDarkMode}
+            className="absolute top-4 right-4 w-12 h-12 rounded-full bg-white/20 dark:bg-black/20 backdrop-blur-sm hover:bg-white/30 dark:hover:bg-black/30 transition-all duration-200 flex items-center justify-center z-50 cursor-pointer"
+            title={darkMode ? "Passa al tema chiaro" : "Passa al tema scuro"}
+          >
+            {darkMode ? (
+              <SunIcon className="w-7 h-7 text-yellow-500" />
+            ) : (
+              <MoonIcon className="w-7 h-7 text-gray-600" />
+            )}
+          </button>
           {/* Logo e titolo animato */}
           <div className="text-center mb-6">
-            <div className="relative inline-block mb-4">
+            <div className="relative inline-block -mt-4">
               {/* Icona foglia animata */}
               <div className="w-16 h-16 mx-auto relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-emerald-400 to-lime-500 rounded-full animate-float opacity-80"></div>
@@ -665,25 +712,27 @@ export default function SetupWizard() {
       </div>
 
       {/* Contenuto principale */}
-      <div className="flex-1 flex flex-col justify-start -mt-4 px-4">
+      <div className="flex-1 flex flex-col justify-start px-4 -mt-10">
         <div 
           key={key}
-          className={`glass p-6 max-w-md mx-auto w-full ${
+          className={`glass max-w-md mx-auto w-full h-[66vh] flex flex-col overflow-y-auto ${
             showCompletion ? '' : direction === 'right' ? 'animate-slide-in-right' : 'animate-slide-in-left'
           }`}
         >
-          {renderStep()}
+          <div className="flex-1 p-6">
+            {renderStep()}
+          </div>
         </div>
         
         {/* Indicatori di progresso decorativi - nascosti durante il completamento */}
         {!showCompletion && (
-          <div className="flex justify-center items-center space-x-2 mt-8 mb-8">
+          <div className="flex justify-center items-center space-x-2 mt-4 mb-8">
             {Array.from({ length: totalSteps }, (_, i) => (
               <div
                 key={i}
-                className={`rounded-full transition-all duration-300 ${
+                className={`rounded-full ${
                   i < step 
-                    ? 'w-4 h-4 bg-emerald-500 animate-bounce-in' 
+                    ? 'w-4 h-4 bg-emerald-500' 
                     : i === step - 1 
                     ? 'w-4 h-4 bg-emerald-400 animate-pulse' 
                     : 'w-3 h-3 bg-gray-300 dark:bg-gray-600'
@@ -694,14 +743,13 @@ export default function SetupWizard() {
         )}
       </div>
 
-      {/* Barra di progresso e navigazione - nascosta durante il completamento */}
+      {/* Pulsanti di navigazione - nascosti durante il completamento */}
       {!showCompletion && (
-        <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/30 dark:bg-black/30 backdrop-blur-xl">
+        <div className="fixed bottom-0 left-0 right-0 p-4">
           <div className="max-w-md mx-auto">
-            {/* Pulsanti di navigazione */}
-            <div className="flex justify-between items-center py-1">
+            <div className="flex justify-between items-center">
               {step > 1 ? (
-                <button onClick={handlePrev} className="btn-ghost h-10 flex items-center justify-center translate-y-1">
+                <button onClick={handlePrev} className="btn-ghost h-10 flex items-center justify-center -translate-y-8">
                   Indietro
                 </button>
               ) : (
@@ -711,7 +759,7 @@ export default function SetupWizard() {
               {step < totalSteps ? (
                 <button 
                   onClick={handleNext} 
-                  className="btn-primary flex items-center justify-center gap-2 h-10 -translate-y-2"
+                  className="btn-primary flex items-center justify-center gap-2 h-10 -translate-y-10"
                 >
                   Continua
                   <ChevronRightIcon className="w-4 h-4" />
@@ -720,14 +768,17 @@ export default function SetupWizard() {
                 <button 
                   onClick={() => {
                     // Validazione finale per i malus
-                    const allMalusFilled = data.malus.every(malus => malus.trim() !== '');
+                    const allMalusFilled = data.malus.every(malus => {
+                      const name = typeof malus === 'string' ? malus : malus.name;
+                      return name.trim() !== '';
+                    });
                     if (!allMalusFilled) {
                       setShowValidation(true);
                       return;
                     }
                     handleSave();
                   }}
-                  className="btn-primary flex items-center justify-center gap-2 h-10 -translate-y-2"
+                  className="btn-primary flex items-center justify-center gap-2 h-10 -translate-y-10"
                 >
                   Inizia MossyPath!
                   <ChevronRightIcon className="w-4 h-4" />

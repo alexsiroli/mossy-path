@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <title>MossyPath</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#10b981" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="/manifest.json" />
@@ -14,5 +14,31 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      // Aggiorna il theme-color in base al tema
+      function updateThemeColor() {
+        const isDark = document.documentElement.classList.contains('dark');
+        const themeColor = isDark ? '#000000' : '#ffffff';
+        
+        // Aggiorna la meta tag theme-color
+        let themeColorMeta = document.querySelector('meta[name="theme-color"]');
+        if (!themeColorMeta) {
+          themeColorMeta = document.createElement('meta');
+          themeColorMeta.name = 'theme-color';
+          document.head.appendChild(themeColorMeta);
+        }
+        themeColorMeta.content = themeColor;
+      }
+
+      // Osserva i cambiamenti del tema
+      const observer = new MutationObserver(updateThemeColor);
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class']
+      });
+
+      // Inizializza
+      updateThemeColor();
+    </script>
   </body>
 </html> 
