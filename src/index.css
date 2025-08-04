@@ -10,6 +10,11 @@
   a {
     @apply text-emerald-600 dark:text-emerald-400 hover:underline;
   }
+  
+  /* Rimuove la sottolineatura dai link della navbar */
+  nav a {
+    text-decoration: none !important;
+  }
 }
 
 @layer components {

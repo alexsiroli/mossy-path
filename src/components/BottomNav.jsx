@@ -8,7 +8,7 @@ export default function BottomNav() {
     { to: '/settings', icon: Cog6ToothIcon, label: 'Settings' },
   ];
   return (
-    <nav className="sm:hidden fixed bottom-3 inset-x-4 bg-white/30 dark:bg-black/30 backdrop-blur-xl ring-1 ring-white/50 dark:ring-white/10 shadow-xl rounded-2xl px-5 py-2 flex justify-around text-[11px] pb-safe">
+    <nav className="sm:hidden fixed bottom-6 inset-x-4 bg-white/30 dark:bg-black/30 backdrop-blur-xl ring-1 ring-white/50 dark:ring-white/10 shadow-xl rounded-2xl px-5 py-2 flex justify-around text-[11px] pb-safe">
       {links.map(({ to, icon: Icon, label }) => (
         <NavLink
           key={to}
@@ -20,8 +20,7 @@ export default function BottomNav() {
           {({ isActive }) => (
             <>
               <Icon className="h-7 w-7" />
-              <span>{label}</span>
-              {isActive && <span className="block w-1 h-1 bg-emerald-600 rounded-full mt-0.5" />}
+              <span className="mb-1">{label}</span>
             </>
           )}
         </NavLink>
