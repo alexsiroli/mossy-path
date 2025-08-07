@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { load, save, clear } from '../utils/storage';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
+import SectionTitle from './SectionTitle';
 
 export default function Habits() {
   const navigate = useNavigate();
@@ -35,8 +36,9 @@ export default function Habits() {
   };
 
   return (
-    <div className="animate-fade-in-up">
-      <h1 className="text-2xl font-bold mb-6">Abitudini</h1>
+    <>
+      <SectionTitle title="Abitudini" />
+      <div className="animate-fade-in-up mt-36">
 
       <section className="mb-6">
         <h2 className="text-xl font-semibold mb-4">Attività base</h2>
@@ -136,6 +138,7 @@ export default function Habits() {
           Cancella tutti i dati e ricomincia
         </button>
       </div>
-    </div>
-  );
-} 
+        </div>
+      </>
+    );
+  } 

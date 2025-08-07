@@ -1,5 +1,6 @@
 import { load } from '../utils/storage';
 import useAuth from '../hooks/useAuth';
+import SectionTitle from './SectionTitle';
 
 function calcPointsForDay(data, dateKey) {
   const comps = data.completions?.[dateKey] || {};
@@ -80,8 +81,9 @@ export default function Calendar() {
   });
 
   return (
-    <div className="animate-fade-in-up">
-      <h1 className="text-2xl font-bold mb-6">Calendario</h1>
+    <>
+      <SectionTitle title="Calendario" />
+      <div className="animate-fade-in-up mt-36">
       <p className="mt-2 text-sm">Streak attuale: <strong>{currentStreak}</strong> giorni — Miglior streak: <strong>{bestStreak}</strong> giorni</p>
       <table className="w-full border-collapse">
         <thead>
@@ -111,6 +113,7 @@ export default function Calendar() {
           })}
         </tbody>
       </table>
-    </div>
-  );
-} 
+        </div>
+      </>
+    );
+  } 

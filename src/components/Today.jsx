@@ -4,6 +4,7 @@ import TaskItem from './TaskItem';
 import SectionCard from './SectionCard';
 import { calculatePoints } from '../utils/points';
 import useAuth from '../hooks/useAuth';
+import SectionTitle from './SectionTitle';
 
 // Funzione per formattare la data in italiano
 const formatDate = (date) => {
