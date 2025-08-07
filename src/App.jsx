@@ -1,8 +1,11 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import SetupWizard from './components/SetupWizard';
 import Dashboard from './components/Dashboard';
-import Stats from './components/Stats';
-import Settings from './components/Settings';
+import Todos from './components/Todos';
+import Calendar from './components/Calendar';
+import Today from './components/Today';
+import Garden from './components/Garden';
+import Habits from './components/Habits';
 import Layout from './components/Layout';
 import Login from './components/Login';
 import { isConfigured, isNewUser } from './utils/storage';
@@ -33,7 +36,7 @@ export default function App() {
           newUser ? (
             <SetupWizard />
           ) : configured ? (
-            <Navigate to="/dashboard" replace />
+            <Navigate to="/today" replace />
           ) : (
             <SetupWizard />
           )
@@ -42,9 +45,11 @@ export default function App() {
       <Route
         element={<Layout />}
       >
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="stats" element={<Stats />} />
-        <Route path="settings" element={<Settings />} />
+        <Route path="todos" element={<Todos />} />
+        <Route path="calendar" element={<Calendar />} />
+        <Route path="today" element={<Today />} />
+        <Route path="garden" element={<Garden />} />
+        <Route path="habits" element={<Habits />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

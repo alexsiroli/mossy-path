@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { MoonIcon, SunIcon } from '@heroicons/react/24/solid';
+import { MoonIcon, SunIcon, CheckCircleIcon, CalendarIcon, HomeIcon, SparklesIcon, ChartBarIcon } from '@heroicons/react/24/solid';
 import useDarkMode from '../hooks/useDarkMode';
 import useAuth from '../hooks/useAuth';
 
@@ -20,28 +20,44 @@ export default function Header() {
       <nav className="flex items-center gap-4">
         <span className="sm:hidden text-2xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">MossyPath</span>
         <NavLink
-          to="/dashboard"
+          to="/todos"
           className={({ isActive }) =>
-            `hidden sm:block ${isActive ? 'font-bold text-emerald-600 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300'}`
+            `hidden sm:block p-2 rounded hover:bg-white/20 dark:hover:bg-black/20 ${isActive ? 'text-emerald-600 dark:text-emerald-400 bg-white/30 dark:bg-black/30' : 'text-gray-700 dark:text-gray-300'}`
           }
         >
-          Dashboard
+          <CheckCircleIcon className="h-6 w-6" />
         </NavLink>
         <NavLink
-          to="/stats"
+          to="/calendar"
           className={({ isActive }) =>
-            `hidden sm:block ${isActive ? 'font-bold text-emerald-600 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300'}`
+            `hidden sm:block p-2 rounded hover:bg-white/20 dark:hover:bg-black/20 ${isActive ? 'text-emerald-600 dark:text-emerald-400 bg-white/30 dark:bg-black/30' : 'text-gray-700 dark:text-gray-300'}`
           }
         >
-          Statistiche
+          <CalendarIcon className="h-6 w-6" />
         </NavLink>
         <NavLink
-          to="/settings"
+          to="/today"
           className={({ isActive }) =>
-            `hidden sm:block ${isActive ? 'font-bold text-emerald-600 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300'}`
+            `hidden sm:block p-2 rounded hover:bg-white/20 dark:hover:bg-black/20 ${isActive ? 'text-emerald-600 dark:text-emerald-400 bg-white/30 dark:bg-black/30' : 'text-gray-700 dark:text-gray-300'}`
           }
         >
-          Impostazioni
+          <HomeIcon className="h-6 w-6" />
+        </NavLink>
+        <NavLink
+          to="/garden"
+          className={({ isActive }) =>
+            `hidden sm:block p-2 rounded hover:bg-white/20 dark:hover:bg-black/20 ${isActive ? 'text-emerald-600 dark:text-emerald-400 bg-white/30 dark:bg-black/30' : 'text-gray-700 dark:text-gray-300'}`
+          }
+        >
+          <SparklesIcon className="h-6 w-6" />
+        </NavLink>
+        <NavLink
+          to="/habits"
+          className={({ isActive }) =>
+            `hidden sm:block p-2 rounded hover:bg-white/20 dark:hover:bg-black/20 ${isActive ? 'text-emerald-600 dark:text-emerald-400 bg-white/30 dark:bg-black/30' : 'text-gray-700 dark:text-gray-300'}`
+          }
+        >
+          <ChartBarIcon className="h-6 w-6" />
         </NavLink>
       </nav>
 
