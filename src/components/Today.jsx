@@ -5,6 +5,32 @@ import SectionCard from './SectionCard';
 import { calculatePoints } from '../utils/points';
 import useAuth from '../hooks/useAuth';
 
+// Funzione per formattare la data in italiano
+const formatDate = (date) => {
+  const options = { 
+    weekday: 'long', 
+    day: 'numeric', 
+    month: 'long', 
+    year: 'numeric' 
+  };
+  return date.toLocaleDateString('it-IT', options);
+};
+
+// Funzione per separare giorno della settimana e data
+const formatDateParts = (date) => {
+  const options = { 
+    weekday: 'long', 
+    day: 'numeric', 
+    month: 'long', 
+    year: 'numeric' 
+  };
+  const fullDate = date.toLocaleDateString('it-IT', options);
+  const parts = fullDate.split(' ');
+  const weekday = parts[0];
+  const datePart = parts.slice(1).join(' ');
+  return { weekday, datePart };
+};
+
 const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function formatKey(dateObj) {
@@ -151,14 +177,25 @@ export default function Today() {
   };
 
   return (
-    <main className={`transition-all duration-1000 ease-out ${
-      isAnimating 
-        ? 'opacity-0 translate-y-8 scale-95' 
-        : 'opacity-100 translate-y-0 scale-100'
-    }`}>
-      <h1 className="animate-fade-in-up">Oggi</h1>
+    <>
+      {/* Header con data formattata - FUORI dal main per rimanere fisso */}
+      <div className="fixed top-20 inset-x-4 sm:inset-x-0 sm:max-w-screen-md sm:mx-auto bg-white/30 dark:bg-black/30 backdrop-blur-xl ring-1 ring-white/50 dark:ring-white/10 shadow-xl rounded-2xl px-6 py-3 z-50 animate-fade-in-up">
+        <div className="flex justify-between items-center leading-none m-0">
+          <span className="text-lg font-semibold text-white dark:text-white capitalize">
+            {formatDateParts(viewDate).weekday}
+          </span>
+          <span className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
+            {formatDateParts(viewDate).datePart}
+          </span>
+        </div>
+      </div>
 
-      <div className="flex items-center gap-4 mb-4 text-sm animate-fade-in-delay">
+      <main className={`transition-all duration-1000 ease-out ${
+        isAnimating 
+          ? 'opacity-0 translate-y-8 scale-95' 
+          : 'opacity-100 translate-y-0 scale-100'
+      }`}>
+        <div className="flex items-center gap-4 mb-4 text-sm animate-fade-in-delay mt-16">
         <button className="btn-ghost" onClick={() => changeDay(-1)}>
           ← Giorno precedente
         </button>
@@ -260,6 +297,7 @@ export default function Today() {
           </li>
         ))}
       </ul>
-    </main>
-  );
-} 
+        </main>
+      </>
+    );
+  } 
