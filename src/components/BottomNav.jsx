@@ -7,7 +7,7 @@ export default function BottomNav() {
     { to: '/calendar', icon: CalendarIcon, label: 'Calendario' },
     { to: '/today', icon: HomeIcon, label: 'Oggi' },
     { to: '/garden', icon: SparklesIcon, label: 'Giardino' },
-    { to: '/habits', icon: ChartBarIcon, label: 'Abitudini' },
+    { to: '/activities', icon: ChartBarIcon, label: 'Attività' },
   ];
   return (
     <nav className="sm:hidden fixed bottom-6 inset-x-4 bg-white/30 dark:bg-black/30 backdrop-blur-xl ring-1 ring-white/50 dark:ring-white/10 shadow-xl rounded-2xl px-5 py-2 flex justify-around text-[11px] pb-safe">

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { load, save } from '../utils/storage';
+import { saveCompletions as saveCompletionsRemote } from '../utils/db';
 import TaskItem from './TaskItem';
 import SectionCard from './SectionCard';
-import { calculatePoints } from '../utils/points';
+import { calculatePoints, getProgressColor } from '../utils/points';
 import useAuth from '../hooks/useAuth';
 import SectionTitle from './SectionTitle';
 
@@ -33,9 +34,59 @@ const formatDateParts = (date) => {
 };
 
 const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const itShortDays = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+
+function normalize(str) {
+  return (str || '')
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function normalizePart(part) {
+  const v = normalize(part);
+  if (v === 'mattina' || v === 'am') return 'morning';
+  if (v === 'pomeriggio' || v === 'pm') return 'afternoon';
+  return v || 'morning';
+}
+
+function getPointsTextColor(pts) {
+  if (pts >= 100) return 'text-green-400';
+  if (pts > 95) return 'text-green-600';
+  if (pts > 70) return 'text-yellow-500';
+  if (pts > 50) return 'text-orange-500';
+  return 'text-red-500';
+}
+
+function romeNow() {
+  const now = new Date();
+  const s = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Rome' }));
+  return s;
+}
+
+function appDayFrom(date) {
+  const d = new Date(date);
+  const hour = d.getHours();
+  if (hour < 5) {
+    d.setDate(d.getDate() - 1);
+  }
+  d.setHours(0,0,0,0);
+  return d;
+}
+
+function addAppDays(date, delta) {
+  const d = new Date(date);
+  // Portiamo l'orario a mezzogiorno per evitare il cutoff < 5:00 che sottrae un giorno
+  d.setHours(12, 0, 0, 0);
+  d.setDate(d.getDate() + delta);
+  return appDayFrom(d);
+}
 
 function formatKey(dateObj) {
-  return dateObj.toISOString().split('T')[0];
+  // Use Europe/Rome timezone to produce a stable YYYY-MM-DD regardless of the runtime locale
+  return dateObj.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' }); // en-CA gives ISO 8601 format
 }
 
 export default function Today() {
@@ -44,7 +95,7 @@ export default function Today() {
   const [isAnimating, setIsAnimating] = useState(true);
 
   // Data navigation
-  const [viewDate, setViewDate] = useState(new Date());
+  const [viewDate, setViewDate] = useState(() => appDayFrom(romeNow()));
   const dateKey = formatKey(viewDate);
 
   const [completions, setCompletions] = useState(() => data.completions?.[dateKey] || {});
@@ -62,6 +113,8 @@ export default function Today() {
       completions: { ...(current.completions || {}), [dateKey]: completions },
     }, user?.uid);
     setData(load(user?.uid));
+    // remote
+    void saveCompletionsRemote(user?.uid, dateKey, completions);
   }, [completions, dateKey, user?.uid]);
 
   // Animazione di entrata
@@ -72,6 +125,11 @@ export default function Today() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Ricarica i dati locali quando cambia il giorno (per dailySpecific e impostazioni aggiornate)
+  useEffect(() => {
+    setData(load(user?.uid));
+  }, [dateKey, user?.uid]);
+
   const isWeekday = (d) => {
     const day = d.getDay();
     return day !== 0 && day !== 6;
@@ -81,7 +139,17 @@ export default function Today() {
   todayDateOnly.setHours(0, 0, 0, 0);
   const viewDateStart = new Date(viewDate);
   viewDateStart.setHours(0, 0, 0, 0);
-  const isFuture = viewDateStart > todayDateOnly;
+  const appToday = appDayFrom(romeNow());
+  const yesterday = addAppDays(appToday, -1);
+  const tomorrow = addAppDays(appToday, 1);
+  const viewKey = formatKey(viewDate);
+  const todayKey = formatKey(appToday);
+  const yKey = formatKey(yesterday);
+  const tKey = formatKey(tomorrow);
+  const isTodayView = viewKey === todayKey;
+  const isYesterdayView = viewKey === yKey;
+  const isTomorrowView = viewKey === tKey;
+  const isFuture = isTomorrowView;
 
   const tasks = [];
   const baseTasks = [];
@@ -89,6 +157,10 @@ export default function Today() {
   const morningTasks = [];
   const afternoonTasks = [];
   const malusTasks = [];
+  // Stato di espansione per sezioni
+  const [expanded, setExpanded] = useState({ base: true, sleep: true, morning: true, afternoon: true, malus: true });
+  const toggle = (key) => setExpanded((s) => ({ ...s, [key]: !s[key] }));
+
 
   // Base activities
   data.baseActivities?.forEach((act, idx) => {
@@ -105,21 +177,43 @@ export default function Today() {
     sleepTasks.push(bed, wake);
   }
 
-  // Weekly repeating activities
-  const weekdayName = weekdays[viewDate.getDay()];
-  data.dailyActivities?.forEach((act, idx) => {
-    if (!act.days.includes(weekdayName)) return;
-    // repeat logic
+  // Weekly repeating activities - support legacy (days[]) and new (weekday)
+  const englishDow = weekdays[viewDate.getDay()];
+  const italianDow = itShortDays[viewDate.getDay()];
+  const itFullDays = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
+  const weekdayShortNorm = normalize(italianDow);
+  const weekdayFullNorm = normalize(itFullDays[viewDate.getDay()]);
+  const weekdayFullPrefix3 = weekdayFullNorm.slice(0,3);
+  const weekdayEnShortNorm = normalize(englishDow);
+  (data.dailyActivities || []).forEach((act, idx) => {
+    if (!act) return;
+    let include = false;
+    if (typeof act.weekday === 'string') {
+      const wNorm = normalize(act.weekday);
+      include = (
+        wNorm === weekdayShortNorm ||
+        wNorm === weekdayFullNorm ||
+        wNorm.startsWith(weekdayFullPrefix3) ||
+        wNorm === weekdayEnShortNorm
+      );
+    } else if (Array.isArray(act.days)) {
+      include = act.days.includes(englishDow);
+    }
+    if (!include) return;
     const start = new Date(act.createdAt || dateKey);
-    const weeksDiff = Math.floor((viewDate - start) / (7 * 24 * 60 * 60 * 1000));
-    if (weeksDiff % (act.repeat || 1) !== 0) return;
+    const msWeek = 7 * 24 * 60 * 60 * 1000;
+    const weeksDiff = Math.floor((viewDate - start) / msWeek);
+    const repeat = Math.max(1, Number(act.repeat || 1));
+    const offset = Math.max(0, Number(act.offset || 0));
+    if (((weeksDiff - offset) % repeat) !== 0) return;
+    const part = normalizePart(act.partOfDay || 'morning');
     const obj = {
       key: `daily-${idx}`,
       label: act.name,
-      partOfDay: act.partOfDay,
+      partOfDay: part,
     };
     tasks.push(obj);
-    (act.partOfDay === 'morning' ? morningTasks : afternoonTasks).push(obj);
+    (part === 'morning' ? morningTasks : afternoonTasks).push(obj);
   });
 
   // Specific activities for this day
@@ -128,12 +222,12 @@ export default function Today() {
     const obj = {
       key: `spec-${idx}`,
       label: act.name,
-      partOfDay: act.partOfDay,
+      partOfDay: normalizePart(act.partOfDay),
       isSpecific: true,
       specIndex: idx,
     };
     tasks.push(obj);
-    (act.partOfDay === 'morning' ? morningTasks : afternoonTasks).push(obj);
+    (obj.partOfDay === 'morning' ? morningTasks : afternoonTasks).push(obj);
   });
 
   // Malus
@@ -150,52 +244,123 @@ export default function Today() {
     setCompletions((prev) => ({ ...prev, [key]: value }));
   };
 
-  const countPoints = () => calculatePoints(dateKey, data, user?.uid);
+  const countPoints = () => {
+    // Log all visible tasks in the UI
+    console.log('=====================================');
+    console.log('🖥️ TASKS VISIBLE IN TODAY PAGE UI:');
+    console.log('=====================================');
+    
+    console.log('📋 BASE ACTIVITIES:');
+    baseTasks.forEach((task, idx) => {
+      const isCompleted = !!completions[task.key];
+      console.log(`  ${task.key}: "${task.label}" - ${isCompleted ? '✅' : '❌'}`);
+    });
+    
+    console.log('😴 SLEEP ACTIVITIES:');
+    sleepTasks.forEach((task, idx) => {
+      const isCompleted = !!completions[task.key];
+      console.log(`  ${task.key}: "${task.label}" - ${isCompleted ? '✅' : '❌'}`);
+    });
+    
+    console.log('🌅 MORNING ACTIVITIES:');
+    if (morningTasks.length === 0) {
+      console.log('  No morning activities visible in UI');
+    } else {
+      morningTasks.forEach((task, idx) => {
+        const isCompleted = !!completions[task.key];
+        console.log(`  ${task.key}: "${task.label}" - ${isCompleted ? '✅' : '❌'}`);
+      });
+    }
+    
+    console.log('🌇 AFTERNOON ACTIVITIES:');
+    if (afternoonTasks.length === 0) {
+      console.log('  No afternoon activities visible in UI');
+    } else {
+      afternoonTasks.forEach((task, idx) => {
+        const isCompleted = !!completions[task.key];
+        console.log(`  ${task.key}: "${task.label}" - ${isCompleted ? '✅' : '❌'}`);
+      });
+    }
+    
+    console.log('🚫 MALUS ACTIVITIES:');
+    if (malusTasks.length === 0) {
+      console.log('  No malus activities visible in UI');
+    } else {
+      malusTasks.forEach((task, idx) => {
+        const isCompleted = !!completions[task.key];
+        console.log(`  ${task.key}: "${task.label}" - ${isCompleted ? '✅' : '❌'}`);
+      });
+    }
+    
+    // Confronto tra UI e data originale per debug
+    console.log('=====================================');
+    console.log('📊 DEBUG - CONFRONTO DATI:');
+    console.log('=====================================');
+    
+    // Mostra tutte le attività giornaliere nel database
+    console.log('🗄️ TUTTE LE ATTIVITÀ NEL DATABASE:');
+    (data.dailyActivities || []).forEach((act, idx) => {
+      if (!act) return;
+      const wday = act.weekday || (act.days || []).join(',');
+      console.log(`  daily-${idx}: "${act.name}" (${wday}, ${act.partOfDay || 'morning'}, repeat:${act.repeat || 1}, offset:${act.offset || 0})`);
+      console.log(`    createdAt: ${act.createdAt || 'N/A'}`);
+    });
+    
+    // Mostra le completions per questo giorno
+    console.log('🗂️ COMPLETIONS PER QUESTO GIORNO:');
+    Object.keys(completions).forEach(key => {
+      console.log(`  ${key}: ${completions[key]}`);
+    });
+    
+    console.log('=====================================');
+    console.log(`📅 Today is: ${formatDateParts(viewDate).weekday} ${formatDateParts(viewDate).datePart}`);
+    console.log(`🔑 Date key: ${dateKey}`);
+    console.log('📊 Now calculating points with this data...');
+    console.log('=====================================');
+    
+    return calculatePoints(dateKey, data, user?.uid);
+  };
 
   const [newName, setNewName] = useState('');
   const [newPart, setNewPart] = useState('morning');
 
-  const addSpecific = () => {
-    if (!newName.trim()) return;
-    const current = load(user?.uid);
-    const list = (current.dailySpecific?.[dateKey] || []).concat({
-      name: newName.trim(),
-      partOfDay: newPart,
-    });
-    const newDailySpecific = {
-      ...(current.dailySpecific || {}),
-      [dateKey]: list,
-    };
-    save({ ...current, dailySpecific: newDailySpecific }, user?.uid);
-    setData(load(user?.uid));
-    setNewName('');
-  };
+  const addSpecific = () => {};
 
   const changeDay = (delta) => {
-    const d = new Date(viewDate);
-    d.setDate(d.getDate() + delta);
-    setViewDate(d);
+    // Recalcola i limiti rispetto all'"oggi" corrente (con cutoff 5:00)
+    const nowToday = appDayFrom(romeNow());
+    const nowY = addAppDays(nowToday, -1);
+    const nowT = addAppDays(nowToday, 1);
+    const c = addAppDays(viewDate, delta);
+    const cKey = formatKey(c);
+    if (![formatKey(nowY), formatKey(nowToday), formatKey(nowT)].includes(cKey)) return;
+    setViewDate(c);
   };
 
   return (
     <>
       {/* Header con data formattata - FUORI dal main per rimanere fisso */}
-      <div className="fixed top-20 inset-x-4 sm:inset-x-0 sm:max-w-screen-md sm:mx-auto bg-white/30 dark:bg-black/30 backdrop-blur-xl ring-1 ring-white/50 dark:ring-white/10 shadow-xl rounded-2xl px-6 py-3 z-50">
-        <div className="flex justify-between items-center leading-none m-0">
-          <span className="text-lg font-semibold text-black dark:text-white capitalize">
-            {formatDateParts(viewDate).weekday}
-          </span>
-          <span className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
-            {formatDateParts(viewDate).datePart}
-          </span>
+      <div className="fixed top-20 inset-x-4 sm:inset-x-0 sm:max-w-screen-md sm:mx-auto bg-white/30 dark:bg-black/30 backdrop-blur-xl ring-1 ring-white/50 dark:ring-white/10 shadow-xl rounded-2xl px-4 py-3 z-50">
+        <div className="grid grid-cols-[auto,1fr,auto] items-center">
+          <button onClick={() => changeDay(-1)} disabled={isYesterdayView} className={`p-1 rounded-md hover:bg-white/20 ${isYesterdayView ? 'opacity-50 cursor-not-allowed' : ''}`} aria-label="Giorno precedente">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.707 14.707a1 1 0 01-1.414 0L7.586 11l3.707-3.707a1 1 0 011.414 1.414L10.414 11l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd"/></svg>
+          </button>
+          <div className="flex justify-between items-center leading-none m-0">
+            <span className="text-lg font-semibold text-black dark:text-white capitalize">{formatDateParts(viewDate).weekday}</span>
+            <span className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">{formatDateParts(viewDate).datePart}</span>
+          </div>
+          <button onClick={() => changeDay(1)} disabled={isTomorrowView} className={`p-1 rounded-md hover:bg-white/20 ${isTomorrowView ? 'opacity-50 cursor-not-allowed' : ''}`} aria-label="Giorno successivo">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7.293 5.293a1 1 0 011.414 0L12.414 9 8.707 12.707a1 1 0 01-1.414-1.414L9.586 9 7.293 6.707a1 1 0 010-1.414z" clipRule="evenodd"/></svg>
+          </button>
         </div>
       </div>
       
       {/* Progress bar - Fisso in basso */}
-      <div className="fixed bottom-24 inset-x-4 sm:inset-x-0 sm:max-w-screen-md sm:mx-auto bg-white/30 dark:bg-black/30 backdrop-blur-xl ring-1 ring-white/50 dark:ring-white/10 shadow-xl rounded-2xl px-4 py-3 z-40">
+      {!isFuture && (
+      <div className={`fixed bottom-24 inset-x-4 sm:inset-x-0 sm:max-w-screen-md sm:mx-auto bg-white/30 dark:bg-black/30 backdrop-blur-xl ring-1 ring-white/50 dark:ring-white/10 shadow-xl rounded-2xl px-4 py-3 z-40 ${countPoints()===100 ? 'glow-emerald' : ''}`}>
         {(() => {
           const pts = countPoints();
-          const color = pts >= 80 ? 'bg-green-500' : pts >= 50 ? 'bg-yellow-500' : 'bg-red-500';
+          const color = getProgressColor(pts);
           return (
             <>
               <div className="h-3 w-full bg-gray-300 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -205,14 +370,15 @@ export default function Today() {
                 />
               </div>
               <p className="text-sm mt-1 text-center font-semibold">
-                <span className={pts >= 80 ? 'text-green-500' : pts >= 50 ? 'text-yellow-500' : 'text-red-500'}>
+                <span className={getPointsTextColor(pts)}>
                   {pts}
-                </span> / 100 punti{isFuture && ' (solo lettura)'}
+                </span> / 100 punti
               </p>
             </>
           );
         })()}
       </div>
+      )}
 
       <main className={`transition-all duration-1000 ease-out mt-32 ${
         isAnimating 
@@ -227,14 +393,14 @@ export default function Today() {
         <div className="space-y-4">
           {/* Attività base */}
           {baseTasks.length > 0 && (
-            <SectionCard title="Attività base" className="animate-fade-in-delay-2 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5">
+            <SectionCard title="Attività base" collapsible expanded={expanded.base} onToggle={() => toggle('base')} className="bg-gradient-to-br from-emerald-500/40 to-emerald-600/30 ring-1 ring-emerald-500/40 dark:ring-emerald-600/40">
               {baseTasks.map((t) => (
                 <TaskItem
                   key={t.key}
                   label={t.label}
                   checked={!!completions[t.key]}
                   onChange={(v) => handleToggle(t.key, v)}
-                  disabled={isFuture}
+                  hideCheckbox={isFuture}
                 />
               ))}
             </SectionCard>
@@ -242,14 +408,14 @@ export default function Today() {
           
           {/* Sonno */}
           {sleepTasks.length > 0 && (
-            <SectionCard title="Sonno" className="animate-fade-in-delay-2 bg-gradient-to-br from-blue-500/10 to-blue-600/5">
+            <SectionCard title="Sonno" collapsible expanded={expanded.sleep} onToggle={() => toggle('sleep')} className="bg-gradient-to-br from-blue-500/40 to-blue-600/30 ring-1 ring-blue-500/40 dark:ring-blue-600/40">
               {sleepTasks.map((t) => (
                 <TaskItem
                   key={t.key}
                   label={t.label}
                   checked={!!completions[t.key]}
                   onChange={(v) => handleToggle(t.key, v)}
-                  disabled={isFuture}
+                  hideCheckbox={isFuture}
                 />
               ))}
             </SectionCard>
@@ -260,16 +426,16 @@ export default function Today() {
         <div className="space-y-4">
           {/* Mattina */}
           {morningTasks.length > 0 && (
-            <SectionCard title="Mattina" className="animate-fade-in-delay-3 bg-gradient-to-br from-amber-500/10 to-amber-600/5">
+            <SectionCard title="Mattina" collapsible expanded={expanded.morning} onToggle={() => toggle('morning')} className="bg-gradient-to-br from-amber-500/40 to-amber-600/30 ring-1 ring-amber-500/40 dark:ring-amber-600/40">
               {morningTasks.map((t) => (
                 <TaskItem
                   key={t.key}
                   label={t.label}
                   checked={!!completions[t.key]}
                   onChange={(v) => handleToggle(t.key, v)}
-                  disabled={isFuture}
+                  hideCheckbox={isFuture}
                   onDelete={
-                    t.isSpecific
+                    t.isSpecific && !isFuture
                       ? () => {
                           const updated = load(user?.uid);
                           const list = (updated.dailySpecific?.[dateKey] || []).filter(
@@ -291,16 +457,16 @@ export default function Today() {
           
           {/* Pomeriggio */}
           {afternoonTasks.length > 0 && (
-            <SectionCard title="Pomeriggio" className="animate-fade-in-delay-3 bg-gradient-to-br from-orange-500/10 to-orange-600/5">
+            <SectionCard title="Pomeriggio" collapsible expanded={expanded.afternoon} onToggle={() => toggle('afternoon')} className="bg-gradient-to-br from-orange-500/40 to-orange-600/30 ring-1 ring-orange-500/40 dark:ring-orange-600/40">
               {afternoonTasks.map((t) => (
                 <TaskItem
                   key={t.key}
                   label={t.label}
                   checked={!!completions[t.key]}
                   onChange={(v) => handleToggle(t.key, v)}
-                  disabled={isFuture}
+                  hideCheckbox={isFuture}
                   onDelete={
-                    t.isSpecific
+                    t.isSpecific && !isFuture
                       ? () => {
                           const updated = load(user?.uid);
                           const list = (updated.dailySpecific?.[dateKey] || []).filter(
@@ -322,14 +488,14 @@ export default function Today() {
           
           {/* Malus */}
           {malusTasks.length > 0 && (
-            <SectionCard title="Malus" className="animate-fade-in-delay-4 bg-gradient-to-br from-red-500/10 to-red-600/5">
+            <SectionCard title="Malus" collapsible expanded={expanded.malus} onToggle={() => toggle('malus')} className="bg-gradient-to-br from-red-500/40 to-red-600/30 ring-1 ring-red-500/40 dark:ring-red-600/40">
               {malusTasks.map((t) => (
                 <TaskItem
                   key={t.key}
                   label={t.label}
                   checked={!!completions[t.key]}
                   onChange={(v) => handleToggle(t.key, v)}
-                  disabled={isFuture}
+                  hideCheckbox={isFuture}
                 />
               ))}
             </SectionCard>
@@ -339,56 +505,7 @@ export default function Today() {
 
       {/* Progress bar - Spostato fuori dal main per essere fisso */}
 
-      {/* Aggiungi attività specifica - Sezione modernizzata */}
-      <div className="mt-8 mb-24 p-4 bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-xl shadow-md animate-fade-in-delay-4">
-        <h3 className="text-lg font-semibold mb-3 text-purple-600 dark:text-purple-400">Aggiungi attività specifica</h3>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <input
-            type="text"
-            placeholder="Nome attività"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className="flex-1 rounded-lg"
-          />
-          <select className="select rounded-lg" value={newPart} onChange={(e) => setNewPart(e.target.value)}>
-            <option value="morning">Mattina</option>
-            <option value="afternoon">Pomeriggio</option>
-          </select>
-          <button onClick={addSpecific} className="btn-primary">Aggiungi</button>
-        </div>
-        
-        {specificToday.length > 0 && (
-          <div className="mt-4">
-            <h4 className="text-sm font-semibold mb-2 text-purple-500 dark:text-purple-400">Attività specifiche di oggi:</h4>
-            <ul className="space-y-2">
-              {specificToday.map((t, idx) => (
-                <li key={idx} className="flex items-center justify-between p-2 bg-white/30 dark:bg-black/30 rounded-lg">
-                  <span>
-                    {t.name} <span className="text-xs text-gray-500">({t.partOfDay === 'morning' ? 'mattina' : 'pomeriggio'})</span>
-                  </span>
-                  <button
-                    className="p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                    onClick={() => {
-                      const updated = load(user?.uid);
-                      const list = (updated.dailySpecific?.[dateKey] || []).filter((_, i) => i !== idx);
-                      const newDailySpecific = {
-                        ...(updated.dailySpecific || {}),
-                        [dateKey]: list,
-                      };
-                      save({ ...updated, dailySpecific: newDailySpecific }, user?.uid);
-                      setData(load(user?.uid));
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
+      
       
       {/* Spazio extra per evitare che il contenuto venga nascosto dalla barra di avanzamento */}
       <div className="pb-20"></div>

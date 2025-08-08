@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import SectionTitle from './SectionTitle';
 import { load, save } from '../utils/storage';
+import { saveTodosRemote } from '../utils/db';
 import useAuth from '../hooks/useAuth';
 import { PlusIcon, TrashIcon, PencilIcon, CheckIcon, XMarkIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
 
@@ -43,6 +44,8 @@ export default function Todos() {
     const userData = load(user?.uid) || {};
     save({ ...userData, todoLists: newLists }, user?.uid);
     setLists(newLists);
+    // remote
+    void saveTodosRemote(user?.uid, newLists);
   };
 
   // Gestisce l'espansione/collasso di una lista

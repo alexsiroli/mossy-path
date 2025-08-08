@@ -98,7 +98,7 @@ export default function SetupWizard() {
     'Dormire <6 ore',
     'Andare a letto dopo mezzanotte',
     'Saltare la doccia',
-    'Non lavarsi i denti',
+    'Non lavasi i denti',
     'Non fare esercizio fisico',
     'Stare seduti >8h',
     'Non bere acqua',
@@ -186,10 +186,15 @@ export default function SetupWizard() {
   };
 
   const handleSave = () => {
-    save(data, user?.uid);
+    // Normalizza i malus in oggetti coerenti { name, weekdaysOnly }
+    const normalized = {
+      ...data,
+      malus: (data.malus || []).map((m) => (typeof m === 'string' ? { name: m, weekdaysOnly: true } : m))
+    };
+
+    save(normalized, user?.uid);
     setShowCompletion(true);
     
-    // Avvia il timer per il cerchio di completamento (5 secondi)
     const startTime = Date.now();
     const duration = 5000; // 5 secondi
     
@@ -201,9 +206,8 @@ export default function SetupWizard() {
       if (progress < 100) {
         requestAnimationFrame(updateProgress);
       } else {
-        // Dopo 10 secondi, naviga alla dashboard con animazione
         setTimeout(() => {
-          navigate('/dashboard');
+          navigate('/today');
         }, 500);
       }
     };

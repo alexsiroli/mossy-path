@@ -1,47 +1,6 @@
 import { load } from '../utils/storage';
 import useAuth from '../hooks/useAuth';
-
-function calcPointsForDay(data, dateKey) {
-  const comps = data.completions?.[dateKey] || {};
-  let pts = 0;
-  const viewDate = new Date(dateKey);
-  const weekdayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][viewDate.getDay()];
-  const isWeekday = (d) => {
-    const day = d.getDay();
-    return day !== 0 && day !== 6;
-  };
-
-  data.baseActivities?.forEach((_, idx) => {
-    if (comps[`base-${idx}`]) pts += 10;
-  });
-  if (data.sleep) {
-    if (comps['sleep-bed']) pts += 15;
-    if (comps['sleep-wake']) pts += 15;
-  }
-  const partDone = (part) => {
-    const tasks = [];
-    data.dailyActivities?.forEach((act, idx) => {
-      if (!act.days.includes(weekdayName)) return;
-      const start = new Date(act.createdAt || dateKey);
-      const weeksDiff = Math.floor((viewDate - start) / (7 * 24 * 60 * 60 * 1000));
-      if (weeksDiff % (act.repeat || 1) !== 0) return;
-      if (act.partOfDay === part) tasks.push(`daily-${idx}`);
-    });
-    (data.dailySpecific?.[dateKey] || []).forEach((act, idx) => {
-      if (act.partOfDay === part) tasks.push(`spec-${idx}`);
-    });
-    return tasks.length > 0 && tasks.every((k) => comps[k]);
-  };
-  if (partDone('morning')) pts += 10;
-  if (partDone('afternoon')) pts += 10;
-  data.malus?.forEach((malus, idx) => {
-    // Se malus è una stringa, non ha weekdaysOnly
-    const weekdaysOnly = typeof malus === 'object' ? malus.weekdaysOnly : false;
-    if (weekdaysOnly && !isWeekday) return;
-    if (comps[`malus-${idx}`]) pts -= 10;
-  });
-  return pts;
-}
+import { calculatePoints } from '../utils/points';
 
 export default function Stats() {
   const { user } = useAuth();
@@ -56,7 +15,7 @@ export default function Stats() {
     const nowMidnight = new Date();
     nowMidnight.setHours(0, 0, 0, 0);
     if (d > nowMidnight) continue;
-    const pts = calcPointsForDay(data, key);
+    const pts = calculatePoints(key, data);
     rows.push({ key, pts });
   }
 

@@ -4,68 +4,46 @@
     <meta charset="UTF-8" />
     <title>MossyPath</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#000000" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="MossyPath" />
     <meta name="color-scheme" content="light dark" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" sizes="1024x1024" href="/icons/icon-1024.png" />
     <style>
-      /* Stili di base per evitare il flash */
-      body {
-        margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
-      /* Colori per i temi senza dipendere da JS inline styles */
-      html.dark body {
-        background-color: #000000;
-        color: #f3f4f6;
-      }
-      html:not(.dark) body {
-        background-color: #ffffff;
-        color: #111827;
-      }
+      body { margin: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+      html.dark body { background-color: #000; color: #f3f4f6; }
+      html:not(.dark) body { background-color: #fff; color: #111827; }
     </style>
   </head>
   <body>
     <div id="root"></div>
     <script>
-      // Applica il tema immediatamente per evitare il flash
       (function() {
         const theme = localStorage.getItem('theme');
         const root = document.documentElement;
-        const body = document.body;
-        
         if (theme === 'light') {
           root.classList.remove('dark');
           document.documentElement.style.colorScheme = 'light';
         } else {
-          // Default: dark
           root.classList.add('dark');
           document.documentElement.style.colorScheme = 'dark';
         }
-        
-        // Forza il reflow per iOS
-        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-          body.style.display = 'none';
-          setTimeout(() => {
-            body.style.display = '';
-          }, 0);
+        // In iOS standalone, assicurati che il body sia visibile e non resti nero
+        const isIOSStandalone = typeof window.navigator.standalone === 'boolean' && window.navigator.standalone;
+        if (isIOSStandalone) {
+          document.body.style.opacity = '0.9999';
+          setTimeout(() => { document.body.style.opacity = ''; }, 0);
         }
       })();
     </script>
     <script type="module" src="/src/main.jsx"></script>
     <script>
-      // Aggiorna il theme-color in base al tema
       function updateThemeColor() {
         const isDark = document.documentElement.classList.contains('dark');
         const themeColor = isDark ? '#000000' : '#ffffff';
-        
-        // Aggiorna la meta tag theme-color
         let themeColorMeta = document.querySelector('meta[name="theme-color"]');
         if (!themeColorMeta) {
           themeColorMeta = document.createElement('meta');
@@ -74,15 +52,8 @@
         }
         themeColorMeta.content = themeColor;
       }
-
-      // Osserva i cambiamenti del tema
       const observer = new MutationObserver(updateThemeColor);
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['class']
-      });
-
-      // Inizializza
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
       updateThemeColor();
     </script>
   </body>

@@ -3,49 +3,8 @@ import { load, save } from '../utils/storage';
 import useAuth from '../hooks/useAuth';
 import SectionTitle from './SectionTitle';
 import TaskItem from './TaskItem';
-import { PlusIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
-
-function calcPointsForDay(data, dateKey) {
-  const comps = data.completions?.[dateKey] || {};
-  let pts = 0;
-  const viewDate = new Date(dateKey);
-  const weekdayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][viewDate.getDay()];
-  const isWeekday = (d) => {
-    const day = d.getDay();
-    return day !== 0 && day !== 6;
-  };
-
-  data.baseActivities?.forEach((_, idx) => {
-    if (comps[`base-${idx}`]) pts += 10;
-  });
-  if (data.sleep) {
-    if (comps['sleep-bed']) pts += 15;
-    if (comps['sleep-wake']) pts += 15;
-  }
-  const partDone = (part) => {
-    const tasks = [];
-    data.dailyActivities?.forEach((act, idx) => {
-      if (!act.days.includes(weekdayName)) return;
-      const start = new Date(act.createdAt || dateKey);
-      const weeksDiff = Math.floor((viewDate - start) / (7 * 24 * 60 * 60 * 1000));
-      if (weeksDiff % (act.repeat || 1) !== 0) return;
-      if (act.partOfDay === part) tasks.push(`daily-${idx}`);
-    });
-    (data.dailySpecific?.[dateKey] || []).forEach((act, idx) => {
-      if (act.partOfDay === part) tasks.push(`spec-${idx}`);
-    });
-    // Considera completata anche se non ci sono attività
-    return tasks.length === 0 || tasks.every((k) => comps[k]);
-  };
-  if (partDone('morning')) pts += 10;
-  if (partDone('afternoon')) pts += 10;
-  data.malus?.forEach((malus, idx) => {
-    const weekdaysOnly = typeof malus === 'object' ? malus.weekdaysOnly : false;
-    if (weekdaysOnly && !isWeekday) return;
-    if (comps[`malus-${idx}`]) pts -= 10;
-  });
-  return pts;
-}
+import { PlusIcon, ChevronLeftIcon, ChevronRightIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { getProgressColor, calculatePoints } from '../utils/points';
 
 // Funzione per ottenere il nome del mese in italiano
 const getMonthName = (month) => {
@@ -219,13 +178,29 @@ export default function Calendar() {
     }
     
     // Weekly repeating activities
-    const weekdayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day.date.getDay()];
-    currentData.dailyActivities?.forEach((act, idx) => {
-      if (!act.days.includes(weekdayName)) return;
-      // repeat logic
-      const start = new Date(act.createdAt || dateKey);
-      const weeksDiff = Math.floor((day.date - start) / (7 * 24 * 60 * 60 * 1000));
-      if (weeksDiff % (act.repeat || 1) !== 0) return;
+    const englishDow = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day.date.getDay()];
+    const italianDow = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'][day.date.getDay()];
+    (currentData.dailyActivities || []).forEach((act, idx) => {
+      let include = false;
+      if (act && act.weekday) {
+        if (act.weekday === italianDow) {
+          const start = new Date(act.createdAt || dateKey);
+          const msWeek = 7 * 24 * 60 * 60 * 1000;
+          const weeksDiff = Math.floor((day.date - start) / msWeek);
+          const repeat = Math.max(1, Number(act.repeat || 1));
+          const offset = Math.max(0, Number(act.offset || 0));
+          include = ((weeksDiff - offset) % repeat) === 0;
+        }
+      } else if (act && Array.isArray(act.days)) {
+        if (act.days.includes(englishDow)) {
+          const start = new Date(act.createdAt || dateKey);
+          const msWeek = 7 * 24 * 60 * 60 * 1000;
+          const weeksDiff = Math.floor((day.date - start) / msWeek);
+          const repeat = Math.max(1, Number(act.repeat || 1));
+          include = (weeksDiff % repeat) === 0;
+        }
+      }
+      if (!include) return;
       const obj = {
         key: `daily-${idx}`,
         label: act.name,
@@ -371,7 +346,7 @@ export default function Calendar() {
     if (isBeforeAccountCreation(date)) return null;
     
     const dateKey = date.toISOString().split('T')[0];
-    return calcPointsForDay(data, dateKey);
+    return calculatePoints(dateKey, data);
   };
   
   // Ottiene il colore in base ai punti
@@ -399,7 +374,7 @@ export default function Calendar() {
       if (isBeforeAccountCreation(d)) break;
       
       const key = d.toISOString().split('T')[0];
-      const pts = calcPointsForDay(data, key);
+      const pts = calculatePoints(key, data);
       
       if (pts >= 80) {
         tempStreak++;
@@ -505,7 +480,7 @@ export default function Calendar() {
           <div className="grid grid-cols-7 gap-1 bg-white/10 dark:bg-black/10 rounded-xl p-1 backdrop-blur-sm">
             {selectedWeekDays.map((day, idx) => {
               const points = getPointsForDay(day.date);
-              const pointsColor = getColorForPoints(points);
+              const pointsColor = points !== null ? getProgressColor(points) : null;
               const isDisabled = isBeforeAccountCreation(day.date);
               const isSelected = selectedDate && day.date.toDateString() === selectedDate.toDateString();
               return (
@@ -574,7 +549,7 @@ export default function Calendar() {
             ))}
             {monthDaysToShow.map((day, idx) => {
               const points = getPointsForDay(day.date);
-              const pointsColor = getColorForPoints(points);
+              const pointsColor = points !== null ? getProgressColor(points) : null;
               const isDisabled = isBeforeAccountCreation(day.date);
               return (
                 <div
@@ -596,7 +571,7 @@ export default function Calendar() {
                       : 'bg-gray-100/30 dark:bg-gray-900/30 border-gray-100 dark:border-gray-800 text-gray-400 dark:text-gray-600'
                   } ${isDisabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer hover:border-emerald-500 dark:hover:border-emerald-500'} ${
                     selectedDate && day.date.toDateString() === selectedDate.toDateString() ? 'ring-2 ring-emerald-500 dark:ring-emerald-400' : ''
-                  }`}
+                  } ${getPointsForDay(day.date)===100 ? 'glow-outline' : ''}`}
                 >
                   <div className="text-right text-sm font-medium">{day.date.getDate()}</div>
                   {pointsColor && day.isPast && (
@@ -618,10 +593,10 @@ export default function Calendar() {
               <div className="bg-white/30 dark:bg-black/30 backdrop-blur-xl ring-1 ring-white/50 dark:ring-white/10 shadow-xl rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-semibold m-0">Punteggio del giorno</p>
-                  <p className="text-sm font-semibold m-0">{calcPointsForDay(data, dayTasks.dateKey)} / 100</p>
+                  <p className="text-sm font-semibold m-0">{calculatePoints(dayTasks.dateKey, data)} / 100</p>
                 </div>
                 <div className="h-3 w-full bg-gray-300 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div className={`h-full ${getColorForPoints(calcPointsForDay(data, dayTasks.dateKey))}`} style={{ width: `${Math.min(100, calcPointsForDay(data, dayTasks.dateKey))}%` }} />
+                  <div className={`h-full ${getProgressColor(calculatePoints(dayTasks.dateKey, data))}`} style={{ width: `${Math.min(100, calculatePoints(dayTasks.dateKey, data))}%` }} />
                 </div>
               </div>
             )}
@@ -652,18 +627,14 @@ export default function Calendar() {
                               <span className={`text-xs font-semibold ${complete ? 'text-emerald-500' : 'text-white/80'}`}>{done}/{total}</span>
                             );
                           })()}
-                          {(() => {
-                            const percent = (key === 'morning' || key === 'afternoon') && tasks.length === 0 ? 100 : sectionPercent(tasks);
-                            return (
-                              <div className="relative h-8 w-8">
-                                <svg className="h-8 w-8" viewBox="0 0 36 36">
-                                  <path className="stroke-current text-gray-300 dark:text-gray-600" fill="none" strokeWidth="3" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                  <path className="stroke-current text-emerald-500" fill="none" strokeWidth="3" strokeDasharray={`${percent}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                  <text x="18" y="21" textAnchor="middle" className="text-xs font-semibold fill-current">{percent}</text>
-                                </svg>
-                              </div>
-                            );
-                          })()}
+                          {tasks.length > 0 && (
+                            <div className="relative h-8 w-8">
+                              <svg className="h-8 w-8" viewBox="0 0 36 36">
+                                <path className="stroke-current text-gray-300 dark:text-gray-600" fill="none" strokeWidth="3" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path className="stroke-current text-emerald-500" fill="none" strokeWidth="3" strokeDasharray={`${sectionPercent(tasks)}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                              </svg>
+                            </div>
+                          )}
                         </>
                       )}
                       {/* Malus: mostra solo -XX o 0/0 in verde */}

@@ -6,6 +6,7 @@ import Calendar from './components/Calendar';
 import Today from './components/Today';
 import Garden from './components/Garden';
 import Habits from './components/Habits';
+import Activities from './components/Activities';
 import Layout from './components/Layout';
 import Login from './components/Login';
 import { isConfigured, isNewUser } from './utils/storage';
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="today" element={<Today />} />
         <Route path="garden" element={<Garden />} />
         <Route path="habits" element={<Habits />} />
+        <Route path="activities" element={<Activities />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

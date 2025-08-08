@@ -52,7 +52,7 @@ export default function Header({ onAccountClick }) {
           <SparklesIcon className="h-6 w-6" />
         </NavLink>
         <NavLink
-          to="/habits"
+          to="/activities"
           className={({ isActive }) =>
             `hidden sm:block p-2 rounded hover:bg-white/20 dark:hover:bg-black/20 ${isActive ? 'text-emerald-600 dark:text-emerald-400 bg-white/30 dark:bg-black/30' : 'text-gray-700 dark:text-gray-300'}`
           }
