@@ -1,4 +1,4 @@
-import { CheckIcon } from '@heroicons/react/24/solid';
+import { CheckIcon, TrashIcon } from '@heroicons/react/24/solid';
 
 export default function TaskItem({ label, checked, onChange, disabled = false, onDelete }) {
   return (
@@ -20,19 +20,21 @@ export default function TaskItem({ label, checked, onChange, disabled = false, o
             : 'border-gray-400 peer-checked:border-emerald-600 peer-checked:bg-emerald-600 peer-checked:animate-pop-in')
         }
       >
-        <CheckIcon className="h-4 w-4 text-white hidden peer-checked:block" />
+        <CheckIcon className={`h-4 w-4 text-white ${checked ? 'block' : 'hidden'}`} />
       </span>
       <span className={checked ? 'line-through text-gray-400' : ''}>{label}</span>
       {onDelete && (
         <button
-          className="ml-auto text-red-600 text-xs hover:underline"
+          className="ml-auto p-2 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-600"
           onClick={(e) => {
             e.stopPropagation();
-            onDelete();
+            if (window.confirm('Sei sicuro di voler eliminare questa attività?')) {
+              onDelete();
+            }
           }}
           aria-label="Elimina"
         >
-          ✕
+          <TrashIcon className="h-5 w-5" />
         </button>
       )}
     </label>
