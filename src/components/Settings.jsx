@@ -24,6 +24,8 @@ export default function Settings() {
       dailyActivities,
     }, user?.uid);
     alert('Impostazioni salvate');
+    // Torna alla pagina precedente dopo il salvataggio
+    navigate(-1);
   };
 
   const resetData = () => {

@@ -317,4 +317,13 @@ h3 {
   border-radius: 0.75rem;
   pointer-events: none;
   animation: glow-pulse 1.8s ease-in-out infinite;
+}
+
+/* Animazione barra di progresso infinita */
+@keyframes progress-infinite {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+.animate-progress-infinite {
+  animation: progress-infinite 1.5s ease-in-out infinite;
 } 

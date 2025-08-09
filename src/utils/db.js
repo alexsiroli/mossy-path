@@ -115,46 +115,68 @@ export async function loadUserSettings(userId) {
 /**
  * Carica tutti i dati dell'utente da Firebase e li sincronizza con localStorage
  * @param {string} userId - ID dell'utente
+ * @param {number} timeoutMs - Timeout in millisecondi (default: 10 secondi)
  * @returns {Promise<boolean>} - true se l'utente ha completato il setup, false altrimenti
  */
-export async function syncUserData(userId) {
+export async function syncUserData(userId, timeoutMs = 10000) {
   if (!userId) return false;
   
-  try {
-    // Carica le impostazioni utente
-    const settings = await loadUserSettings(userId);
-    // Carica le attività settimanali
-    const weeklyActivities = await loadWeeklyActivities(userId);
-    // Carica le todo list
-    const todoLists = await loadTodosRemote(userId);
-    
-    // Se l'utente ha già completato il setup, avrà impostazioni salvate
-    const hasCompletedSetup = settings && 
-      settings.baseActivities && 
-      settings.sleep && 
-      settings.malus;
-    
-    if (hasCompletedSetup) {
-      // Importa i dati da Firebase nel localStorage
-      const { load, save } = await import('./storage');
-      const localData = load(userId) || {};
-      
-      // Merge dei dati remoti con quelli locali, dando priorità ai remoti
-      save({
-        ...localData,
-        baseActivities: settings.baseActivities || localData.baseActivities || [],
-        sleep: settings.sleep || localData.sleep || {},
-        malus: settings.malus || localData.malus || [],
-        dailyActivities: weeklyActivities || localData.dailyActivities || [],
-        todos: todoLists || localData.todos || [],
-      }, userId);
-      
-      return true;
-    }
-    
+  // Controlla se siamo offline
+  if (!navigator.onLine) {
+    console.log('App offline, salto sincronizzazione');
     return false;
+  }
+  
+  // Implementa un timeout per evitare blocchi infiniti
+  const syncPromise = async () => {
+    try {
+      // Carica le impostazioni utente
+      const settings = await loadUserSettings(userId);
+      // Carica le attività settimanali
+      const weeklyActivities = await loadWeeklyActivities(userId);
+      // Carica le todo list
+      const todoLists = await loadTodosRemote(userId);
+      
+      // Se l'utente ha già completato il setup, avrà impostazioni salvate
+      const hasCompletedSetup = settings && 
+        settings.baseActivities && 
+        settings.sleep && 
+        settings.malus;
+      
+      if (hasCompletedSetup) {
+        // Importa i dati da Firebase nel localStorage
+        const { load, save } = await import('./storage');
+        const localData = load(userId) || {};
+        
+        // Merge dei dati remoti con quelli locali, dando priorità ai remoti
+        save({
+          ...localData,
+          baseActivities: settings.baseActivities || localData.baseActivities || [],
+          sleep: settings.sleep || localData.sleep || {},
+          malus: settings.malus || localData.malus || [],
+          dailyActivities: weeklyActivities || localData.dailyActivities || [],
+          todos: todoLists || localData.todos || [],
+        }, userId, false); // false per evitare loop di sincronizzazione
+        
+        return true;
+      }
+      
+      return false;
+    } catch (e) {
+      console.warn('syncUserData error', e);
+      throw e;
+    }
+  };
+  
+  // Implementa timeout
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Sync timeout')), timeoutMs);
+  });
+  
+  try {
+    return await Promise.race([syncPromise(), timeoutPromise]);
   } catch (e) {
-    console.warn('syncUserData error', e);
+    console.warn('Sincronizzazione fallita o timeout:', e);
     return false;
   }
 }

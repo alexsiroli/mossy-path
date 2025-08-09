@@ -24,15 +24,20 @@ export default function App() {
   useEffect(() => {
     if (user && !syncedWithRemote && !isSyncing) {
       setIsSyncing(true);
+      console.log('Avvio sincronizzazione per utente:', user.uid);
       
-      // Sincronizza i dati da Firebase
-      syncUserData(user.uid).then(hasCompletedSetup => {
+      // Sincronizza i dati da Firebase con timeout di 5 secondi
+      syncUserData(user.uid, 5000).then(hasCompletedSetup => {
+        console.log('Sincronizzazione completata. Setup completato:', hasCompletedSetup);
         setIsSetupCompleted(hasCompletedSetup);
         setSyncedWithRemote(true);
         setIsSyncing(false);
-      }).catch(() => {
-        // In caso di errore, usa i dati locali
-        setIsSetupCompleted(isConfigured(user.uid));
+      }).catch((error) => {
+        console.warn('Sincronizzazione fallita, uso dati locali:', error);
+        // In caso di errore o timeout, usa i dati locali
+        const localSetupCompleted = isConfigured(user.uid);
+        console.log('Setup locale completato:', localSetupCompleted);
+        setIsSetupCompleted(localSetupCompleted);
         setSyncedWithRemote(true);
         setIsSyncing(false);
       });
@@ -81,6 +86,22 @@ export default function App() {
         <div className="mt-8 w-64 h-1 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
           <div className="h-full w-1/3 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full animate-progress-infinite"></div>
         </div>
+        
+        {/* Pulsante per saltare la sincronizzazione se sta impiegando troppo tempo */}
+        {isSyncing && (
+          <button 
+            onClick={() => {
+              console.log('Sincronizzazione saltata dall\'utente');
+              const localSetupCompleted = isConfigured(user?.uid);
+              setIsSetupCompleted(localSetupCompleted);
+              setSyncedWithRemote(true);
+              setIsSyncing(false);
+            }}
+            className="mt-6 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm"
+          >
+            Continua offline
+          </button>
+        )}
       </main>
     );
   }
