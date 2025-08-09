@@ -44,7 +44,7 @@ export default function Todos() {
     const userData = load(user?.uid) || {};
     save({ ...userData, todoLists: newLists }, user?.uid);
     setLists(newLists);
-    // remote
+
     void saveTodosRemote(user?.uid, newLists);
   };
 

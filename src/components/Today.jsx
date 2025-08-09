@@ -113,7 +113,7 @@ export default function Today() {
       completions: { ...(current.completions || {}), [dateKey]: completions },
     }, user?.uid);
     setData(load(user?.uid));
-    // remote
+
     void saveCompletionsRemote(user?.uid, dateKey, completions);
   }, [completions, dateKey, user?.uid]);
 

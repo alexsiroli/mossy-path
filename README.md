@@ -1,4 +1,4 @@
-# Game Life
+# MossyPath
 
 Una semplice web-app per gamificare le abitudini quotidiane. Tutti i dati sono salvati in `localStorage`, quindi non è necessario alcun backend.
 

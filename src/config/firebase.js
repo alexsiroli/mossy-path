@@ -17,12 +17,10 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase Authentication and get a reference to the service
 export const auth = getAuth(app);
 
-// Initialize Cloud Firestore with forced long-polling and disabled fetch streams
+// Initialize Cloud Firestore con configurazione senza sperimentali
 export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-  useFetchStreams: false,
-  // Aggiunta configurazione per gestire meglio errori di connessione
-  experimentalAutoDetectLongPolling: true,
+  ignoreUndefinedProperties: true
+  // Nessuna configurazione sperimentale per evitare errori 400
 });
 
 export default app; 

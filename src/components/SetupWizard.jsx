@@ -193,23 +193,18 @@ export default function SetupWizard() {
       malus: (data.malus || []).map((m) => (typeof m === 'string' ? { name: m, weekdaysOnly: true } : m))
     };
 
-    // Salva localmente
-    save(normalized, user?.uid);
-    
-    // Salva in Firebase
+
+
+    // Salva SOLO su Firebase - no localStorage
     try {
-      // Salva le impostazioni di base (baseActivities, sleep, malus) e indica che il setup è completo
-      await saveUserSettings(user?.uid, {
-        baseActivities: normalized.baseActivities,
-        sleep: normalized.sleep,
-        malus: normalized.malus
-      }, true); // true indica che il setup è completo
+
       
-      // Salva le attività settimanali
-      await saveWeeklyActivities(user?.uid, normalized.dailyActivities || []);
+      // Salva tutto tramite la nuova funzione save che gestisce Firebase puro
+      await save(normalized, user?.uid);
+      
+
     } catch (error) {
-      console.error("Errore durante il salvataggio remoto:", error);
-      // Continua comunque, i dati sono salvati localmente
+
     }
     
     setShowCompletion(true);

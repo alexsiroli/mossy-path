@@ -1,5 +1,5 @@
 import { db } from '../config/firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, onSnapshot, collection } from 'firebase/firestore';
 
 const PENDING_KEY = 'mossypath:pendingWrites';
 
@@ -65,7 +65,7 @@ export async function saveUserSettings(userId, settings, isSetupComplete = false
   try {
     await setDoc(doc(db, 'users', userId, 'data', 'settings'), dataToSave, { merge: true });
   } catch (e) {
-    console.warn('saveUserSettings error', e);
+
     enqueueWrite({ pathSegments: ['users', userId, 'data', 'settings'], data: dataToSave, options: { merge: true } });
   }
 }
@@ -75,7 +75,7 @@ export async function saveWeeklyActivities(userId, activities) {
   try {
     await setDoc(doc(db, 'users', userId, 'data', 'weeklyActivities'), { activities }, { merge: true });
   } catch (e) {
-    console.warn('saveWeeklyActivities error', e);
+
     enqueueWrite({ pathSegments: ['users', userId, 'data', 'weeklyActivities'], data: { activities }, options: { merge: true } });
   }
 }
@@ -85,18 +85,22 @@ export async function saveTodosRemote(userId, lists) {
   try {
     await setDoc(doc(db, 'users', userId, 'data', 'todos'), { lists }, { merge: true });
   } catch (e) {
-    console.warn('saveTodosRemote error', e);
+
     enqueueWrite({ pathSegments: ['users', userId, 'data', 'todos'], data: { lists }, options: { merge: true } });
   }
 }
 
 export async function saveCompletions(userId, dateKey, completions) {
   if (!userId || !dateKey) return;
+  
+
+  
   try {
     const ref = doc(db, 'users', userId, 'completions', dateKey);
     await setDoc(ref, { completions }, { merge: true });
+
   } catch (e) {
-    console.warn('saveCompletions error', e);
+
     enqueueWrite({ pathSegments: ['users', userId, 'completions', dateKey], data: { completions }, options: { merge: true } });
   }
 }
@@ -107,77 +111,106 @@ export async function loadUserSettings(userId) {
     const snap = await getDoc(doc(db, 'users', userId, 'data', 'settings'));
     return snap.exists() ? snap.data() : null;
   } catch (e) {
-    console.warn('loadUserSettings error', e);
+
     return null;
   }
 }
 
 /**
- * Carica tutti i dati dell'utente da Firebase e li sincronizza con localStorage
+ * FASE 1: Scarica solo i dati essenziali per aprire l'app velocemente
  * @param {string} userId - ID dell'utente
- * @param {number} timeoutMs - Timeout in millisecondi (default: 10 secondi)
  * @returns {Promise<boolean>} - true se l'utente ha completato il setup, false altrimenti
  */
-export async function syncUserData(userId, timeoutMs = 10000) {
+export async function loadEssentialDataFromServer(userId) {
   if (!userId) return false;
   
-  // Controlla se siamo offline
-  if (!navigator.onLine) {
-    console.log('App offline, salto sincronizzazione');
-    return false;
-  }
-  
-  // Implementa un timeout per evitare blocchi infiniti
-  const syncPromise = async () => {
-    try {
-      // Carica le impostazioni utente
-      const settings = await loadUserSettings(userId);
-      // Carica le attività settimanali
-      const weeklyActivities = await loadWeeklyActivities(userId);
-      // Carica le todo list
-      const todoLists = await loadTodosRemote(userId);
-      
-      // Se l'utente ha già completato il setup, avrà impostazioni salvate
-      const hasCompletedSetup = settings && 
-        settings.baseActivities && 
-        settings.sleep && 
-        settings.malus;
-      
-      if (hasCompletedSetup) {
-        // Importa i dati da Firebase nel localStorage
-        const { load, save } = await import('./storage');
-        const localData = load(userId) || {};
-        
-        // Merge dei dati remoti con quelli locali, dando priorità ai remoti
-        save({
-          ...localData,
-          baseActivities: settings.baseActivities || localData.baseActivities || [],
-          sleep: settings.sleep || localData.sleep || {},
-          malus: settings.malus || localData.malus || [],
-          dailyActivities: weeklyActivities || localData.dailyActivities || [],
-          todos: todoLists || localData.todos || [],
-        }, userId, false); // false per evitare loop di sincronizzazione
-        
-        return true;
-      }
-      
-      return false;
-    } catch (e) {
-      console.warn('syncUserData error', e);
-      throw e;
-    }
-  };
-  
-  // Implementa timeout
-  const timeoutPromise = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error('Sync timeout')), timeoutMs);
-  });
+
   
   try {
-    return await Promise.race([syncPromise(), timeoutPromise]);
-  } catch (e) {
-    console.warn('Sincronizzazione fallita o timeout:', e);
+    // Carica solo le impostazioni base (veloce)
+    const settings = await loadUserSettings(userId);
+    
+
+    
+    // Se l'utente ha dati sul server
+    const hasCompletedSetup = settings && 
+      settings.baseActivities && 
+      settings.sleep && 
+      settings.malus;
+    
+    if (hasCompletedSetup) {
+      // Salva solo le impostazioni base per ora
+      const { load } = await import('./storage');
+      const localData = load(userId) || {};
+      
+      const essentialData = {
+        ...localData, // Mantieni i dati locali esistenti
+        baseActivities: settings.baseActivities,
+        sleep: settings.sleep,
+        malus: settings.malus,
+        dailyActivities: settings.dailyActivities || localData.dailyActivities || []
+      };
+      
+      // Salva direttamente nel localStorage
+      const key = `mossypath:data:${userId}`;
+      localStorage.setItem(key, JSON.stringify(essentialData));
+      
+
+      return true;
+    }
+    
+
     return false;
+  } catch (e) {
+
+    return false;
+  }
+}
+
+/**
+ * FASE 2: Scarica tutti gli altri dati in background
+ * @param {string} userId - ID dell'utente
+ */
+export async function loadRemainingDataFromServer(userId) {
+  if (!userId) return;
+  
+
+  
+  try {
+    // Carica tutti gli altri dati (può essere lento)
+    const [weeklyActivities, todoLists, allCompletions] = await Promise.all([
+      loadWeeklyActivities(userId), 
+      loadTodosRemote(userId),
+      loadAllCompletions(userId)
+    ]);
+    
+
+    
+    // Aggiorna i dati locali con tutti i dati
+    const { load } = await import('./storage');
+    const localData = load(userId) || {};
+    
+    const completeData = {
+      ...localData,
+      dailyActivities: weeklyActivities || localData.dailyActivities || [],
+      todos: todoLists || localData.todos || [],
+      completions: {
+        ...localData.completions,
+        ...allCompletions
+      }
+    };
+    
+    // Salva direttamente nel localStorage
+    const key = `gamelife:data:${userId}`;
+    localStorage.setItem(key, JSON.stringify(completeData));
+    
+
+    
+    // Trigger un refresh dei componenti che potrebbero aver bisogno dei nuovi dati
+    window.dispatchEvent(new CustomEvent('dataRefresh'));
+    
+  } catch (e) {
+
   }
 }
 
@@ -187,7 +220,7 @@ export async function loadWeeklyActivities(userId) {
     const snap = await getDoc(doc(db, 'users', userId, 'data', 'weeklyActivities'));
     return snap.exists() ? (snap.data().activities || []) : [];
   } catch (e) {
-    console.warn('loadWeeklyActivities error', e);
+
     return [];
   }
 }
@@ -198,8 +231,175 @@ export async function loadTodosRemote(userId) {
     const snap = await getDoc(doc(db, 'users', userId, 'data', 'todos'));
     return snap.exists() ? (snap.data().lists || []) : [];
   } catch (e) {
-    console.warn('loadTodosRemote error', e);
+
     return [];
   }
+}
+
+/**
+ * Carica tutte le completions dell'utente da Firebase
+ * @param {string} userId - ID dell'utente
+ * @returns {Promise<Object>} - Oggetto con tutte le completions organizzate per data
+ */
+export async function loadAllCompletions(userId) {
+  if (!userId) return {};
+  try {
+    // Carica tutti i documenti della collezione completions
+    const { getDocs } = await import('firebase/firestore');
+    const completionsRef = collection(db, 'users', userId, 'completions');
+    const snapshot = await getDocs(completionsRef);
+    
+    const allCompletions = {};
+    snapshot.forEach(doc => {
+      const dateKey = doc.id;
+      const data = doc.data();
+      if (data.completions) {
+        allCompletions[dateKey] = data.completions;
+      }
+    });
+    
+
+    return allCompletions;
+  } catch (e) {
+
+    return {};
+  }
+}
+
+// ===== Realtime subscriptions =====
+
+let activeUnsubscribers = [];
+
+function registerUnsub(unsub) {
+  activeUnsubscribers.push(unsub);
+}
+
+export function unsubscribeUserSubscriptions() {
+  try {
+    activeUnsubscribers.forEach((u) => {
+      try { u(); } catch {}
+    });
+  } finally {
+    activeUnsubscribers = [];
+  }
+}
+
+/**
+ * Sottoscrive in realtime le impostazioni e le completions per un dateKey (oggi)
+ * Aggiorna localStorage e chiama onReady alla prima risposta delle impostazioni
+ */
+export function subscribeEssential(userId, dateKey, onReady) {
+  if (!userId) return () => {};
+
+  let initialSettingsDelivered = false;
+  let connectionTimeout;
+
+  // Fallback: se dopo 3 secondi non abbiamo dati, procediamo offline  
+  const fallbackTimer = setTimeout(() => {
+    if (!initialSettingsDelivered) {
+
+      onReady?.(true); // FORZA setup completato dopo timeout
+      initialSettingsDelivered = true;
+    }
+  }, 3000);
+
+  // Settings realtime con error handling
+  const settingsRef = doc(db, 'users', userId, 'data', 'settings');
+  const unsubSettings = onSnapshot(settingsRef, async (snap) => {
+
+    
+    const settings = snap.exists() ? snap.data() : null;
+    const { load } = await import('./storage');
+    const local = load(userId) || {};
+    
+    if (settings) {
+
+      
+      // Aggiorna cache direttamente dai dati Firebase
+      const { updateCache } = await import('./storage');
+      updateCache(userId, 'settings', {
+        baseActivities: settings.baseActivities || [],
+        sleep: settings.sleep || {},
+        malus: settings.malus || [],
+        dailyActivities: settings.dailyActivities || []
+      });
+      
+
+      
+      if (!initialSettingsDelivered) {
+        initialSettingsDelivered = true;
+        clearTimeout(fallbackTimer);
+        // Fix per setup incompleti: se abbiamo baseActivities ma non dailyActivities, 
+        // consideriamo il setup come incompleto (sarà richiesto di nuovo)
+        const hasCompletedSetup = !!(settings.baseActivities && settings.sleep && settings.malus && settings.dailyActivities && settings.dailyActivities.length > 0);
+        
+        // FALLBACK URGENTE: se Firebase non ha dailyActivities ma ha altri dati, considera setup completo
+        const hasBasicSetup = !!(settings.baseActivities && settings.sleep && settings.malus);
+        
+        if (hasBasicSetup && (!settings.dailyActivities || settings.dailyActivities.length === 0)) {
+
+          onReady?.(true); // Forza setup completato
+          return;
+        }
+        
+        if (!hasCompletedSetup) {
+
+        }
+        
+
+        onReady?.(hasCompletedSetup);
+      }
+      // Notifica UI
+      window.dispatchEvent(new CustomEvent('dataRefresh'));
+    } else {
+
+      if (!initialSettingsDelivered) {
+        initialSettingsDelivered = true;
+        clearTimeout(fallbackTimer);
+        onReady?.(false);
+      }
+    }
+  }, (error) => {
+
+    if (!initialSettingsDelivered) {
+      initialSettingsDelivered = true;
+      clearTimeout(fallbackTimer);
+
+      onReady?.(true); // FORZA setup completato anche su errore
+    }
+  });
+  registerUnsub(unsubSettings);
+
+  // Completions realtime (solo oggi)
+  if (dateKey) {
+    const todayRef = doc(db, 'users', userId, 'completions', dateKey);
+    const unsubToday = onSnapshot(todayRef, async (snap) => {
+
+      
+      const data = snap.exists() ? snap.data() : null;
+      const { load } = await import('./storage');
+      const local = load(userId) || {};
+      const newCompletions = data?.completions || {};
+      
+
+      
+      // Aggiorna cache completions
+      const { updateCache } = await import('./storage');
+      updateCache(userId, 'completions', { [dateKey]: newCompletions });
+      
+
+      
+      window.dispatchEvent(new CustomEvent('dataRefresh'));
+    }, (error) => {
+
+      // Non è critico - le completions possono fallire silently
+    });
+    registerUnsub(unsubToday);
+  }
+
+  return () => {
+    clearTimeout(fallbackTimer);
+    unsubscribeUserSubscriptions();
+  };
 }
 

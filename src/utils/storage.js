@@ -1,62 +1,108 @@
-const BASE_KEY = 'gamelife:data';
+// ===== STORAGE COMPLETAMENTE FIREBASE - NO LOCALSTORAGE =====
 
-// Get user-specific key
-function getUserKey(userId) {
-  return userId ? `gamelife:data:${userId}` : BASE_KEY;
-}
+// In-memory cache per prestazioni (si svuota al reload)
+let userDataCache = {};
+let completionsCache = {};
 
 export function load(userId = null) {
-  try {
-    const key = getUserKey(userId);
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
+  if (!userId) return {};
+  
+  // Restituisce i dati dalla cache in-memory
+  const data = userDataCache[userId] || {};
+  
+
+  
+  return {
+    ...data,
+    completions: completionsCache[userId] || {}
+  };
 }
 
 /**
- * Salva i dati nel localStorage e opzionalmente li sincronizza con Firebase
+ * Salva SOLO su Firebase - no localStorage
  * @param {Object} data - Dati da salvare
  * @param {string} userId - ID dell'utente
- * @param {boolean} syncWithFirebase - Se sincronizzare i dati con Firebase
  */
-export function save(data, userId = null, syncWithFirebase = true) {
-  const key = getUserKey(userId);
-  localStorage.setItem(key, JSON.stringify(data));
+export async function save(data, userId = null) {
+  if (!userId) return;
   
-  // Sincronizza con Firebase se richiesto e se l'utente è autenticato
-  if (syncWithFirebase && userId) {
-    // Importa in modo dinamico per evitare dipendenze circolari
-    import('./db').then(({ saveUserSettings, saveWeeklyActivities }) => {
-      // Salva le impostazioni base
-      saveUserSettings(userId, {
-        baseActivities: data.baseActivities,
-        sleep: data.sleep,
-        malus: data.malus
-      });
-      
-      // Salva le attività settimanali
-      if (data.dailyActivities) {
-        saveWeeklyActivities(userId, data.dailyActivities);
+
+  
+  // Aggiorna cache locale per UI reattiva
+  userDataCache[userId] = {
+    baseActivities: data.baseActivities,
+    sleep: data.sleep,
+    malus: data.malus,
+    dailyActivities: data.dailyActivities
+  };
+  
+  if (data.completions) {
+    completionsCache[userId] = data.completions;
+  }
+  
+  try {
+    const { saveUserSettings, saveWeeklyActivities, saveCompletions } = await import('./db');
+    
+    // Salva settings
+    const settingsToSave = {
+      baseActivities: data.baseActivities,
+      sleep: data.sleep,
+      malus: data.malus,
+      dailyActivities: data.dailyActivities
+    };
+    
+
+    
+    await saveUserSettings(userId, settingsToSave, !!data.baseActivities);
+    
+    // Salva activities
+    if (data.dailyActivities) {
+      await saveWeeklyActivities(userId, data.dailyActivities);
+    }
+    
+    // Salva completions
+    if (data.completions) {
+      for (const [dateKey, completions] of Object.entries(data.completions)) {
+        if (completions && Object.keys(completions).length > 0) {
+          await saveCompletions(userId, dateKey, completions);
+        }
       }
-    }).catch(err => {
-      console.warn('Errore durante la sincronizzazione con Firebase:', err);
-    });
+    }
+    
+
+  } catch (e) {
+
+  }
+}
+
+// Aggiorna la cache quando arrivano dati da Firebase
+export function updateCache(userId, type, data) {
+  if (!userId) return;
+  
+  if (type === 'settings') {
+    userDataCache[userId] = { ...userDataCache[userId], ...data };
+  } else if (type === 'completions') {
+    if (!completionsCache[userId]) completionsCache[userId] = {};
+    Object.assign(completionsCache[userId], data);
   }
 }
 
 export function isConfigured(userId = null) {
-  const d = load(userId);
-  return !!d.baseActivities && !!d.sleep && !!d.dailyActivities && !!d.malus;
+  if (!userId) return false;
+  const d = userDataCache[userId] || {};
+  return !!d.baseActivities && !!d.sleep && !!d.dailyActivities && !!d.malus && 
+         d.baseActivities.length > 0 && d.dailyActivities.length > 0 && d.malus.length > 0;
 }
 
 export function isNewUser(userId = null) {
-  const d = load(userId);
-  return !d.hasOwnProperty('baseActivities') && !d.hasOwnProperty('sleep') && !d.hasOwnProperty('dailyActivities') && !d.hasOwnProperty('malus');
+  if (!userId) return true;
+  const d = userDataCache[userId] || {};
+  return !d.baseActivities && !d.sleep && !d.dailyActivities && !d.malus;
 }
 
 export function clear(userId = null) {
-  const key = getUserKey(userId);
-  localStorage.removeItem(key);
+  if (!userId) return;
+  delete userDataCache[userId];
+  delete completionsCache[userId];
+
 } 

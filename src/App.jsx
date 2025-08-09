@@ -11,7 +11,7 @@ import Activities from './components/Activities';
 import Layout from './components/Layout';
 import Login from './components/Login';
 import { isConfigured, isNewUser } from './utils/storage';
-import { syncUserData } from './utils/db';
+import { loadEssentialDataFromServer, loadRemainingDataFromServer, subscribeEssential, unsubscribeUserSubscriptions } from './utils/db';
 import useAuth from './hooks/useAuth';
 
 export default function App() {
@@ -20,33 +20,49 @@ export default function App() {
   const [isSetupCompleted, setIsSetupCompleted] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   
-  // Sincronizza i dati quando l'utente è autenticato
+  // FASE 0: calcola il dateKey di oggi (Europe/Rome, cutoff 6:00)
+  function romeNow() {
+    const now = new Date();
+    return new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Rome' }));
+  }
+  function appDayFrom(date) {
+    const d = new Date(date);
+    if (d.getHours() < 6) d.setDate(d.getDate() - 1);
+    d.setHours(0,0,0,0);
+    return d;
+  }
+  function formatKey(dateObj) {
+    return dateObj.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
+  }
+  const todayKey = formatKey(appDayFrom(romeNow()));
+
+  // FASE 1: Realtime per settings + completions di oggi, poi background fetch completo
   useEffect(() => {
+    // Cleanup vecchie sottoscrizioni quando cambia utente
+    unsubscribeUserSubscriptions();
     if (user && !syncedWithRemote && !isSyncing) {
       setIsSyncing(true);
-      console.log('Avvio sincronizzazione per utente:', user.uid);
+
       
-      // Sincronizza i dati da Firebase con timeout di 5 secondi
-      syncUserData(user.uid, 5000).then(hasCompletedSetup => {
-        console.log('Sincronizzazione completata. Setup completato:', hasCompletedSetup);
+      const unsubscribe = subscribeEssential(user.uid, todayKey, (hasCompletedSetup) => {
+
         setIsSetupCompleted(hasCompletedSetup);
         setSyncedWithRemote(true);
         setIsSyncing(false);
-      }).catch((error) => {
-        console.warn('Sincronizzazione fallita, uso dati locali:', error);
-        // In caso di errore o timeout, usa i dati locali
-        const localSetupCompleted = isConfigured(user.uid);
-        console.log('Setup locale completato:', localSetupCompleted);
-        setIsSetupCompleted(localSetupCompleted);
-        setSyncedWithRemote(true);
-        setIsSyncing(false);
+        // Background load completo
+        loadRemainingDataFromServer(user.uid);
       });
-    } else if (!user) {
-      // Reset dello stato quando l'utente si disconnette
+      return unsubscribe;
+    }
+    if (!user) {
+
       setSyncedWithRemote(false);
       setIsSetupCompleted(false);
     }
-  }, [user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, todayKey]);
+  
+  // Firebase puro - no più controllo localStorage
   
   // Usa i dati locali come fallback se la sincronizzazione non è ancora avvenuta
   const configured = syncedWithRemote ? isSetupCompleted : isConfigured(user?.uid);
@@ -72,7 +88,7 @@ export default function App() {
           </h2>
           <div className="flex items-center space-x-1">
             <span className="text-lg text-emerald-600 dark:text-emerald-400">
-              {loading ? "Caricamento" : "Sincronizzazione dati"}
+              {loading ? "Caricamento" : "Download dati"}
             </span>
             <div className="flex space-x-1">
               <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
@@ -86,22 +102,6 @@ export default function App() {
         <div className="mt-8 w-64 h-1 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
           <div className="h-full w-1/3 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full animate-progress-infinite"></div>
         </div>
-        
-        {/* Pulsante per saltare la sincronizzazione se sta impiegando troppo tempo */}
-        {isSyncing && (
-          <button 
-            onClick={() => {
-              console.log('Sincronizzazione saltata dall\'utente');
-              const localSetupCompleted = isConfigured(user?.uid);
-              setIsSetupCompleted(localSetupCompleted);
-              setSyncedWithRemote(true);
-              setIsSyncing(false);
-            }}
-            className="mt-6 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm"
-          >
-            Continua offline
-          </button>
-        )}
       </main>
     );
   }

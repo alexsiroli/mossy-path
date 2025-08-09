@@ -43,7 +43,7 @@ describe('Storage Utility', () => {
     
     // Verify localStorage.setItem was called correctly
     expect(localStorage.setItem).toHaveBeenCalledWith(
-      `gamelife:data:${userId}`, 
+      `mossypath:data:${userId}`, 
       JSON.stringify(testData)
     );
     
@@ -51,7 +51,7 @@ describe('Storage Utility', () => {
     const loadedData = load(userId);
     
     // Verify localStorage.getItem was called correctly
-    expect(localStorage.getItem).toHaveBeenCalledWith(`gamelife:data:${userId}`);
+    expect(localStorage.getItem).toHaveBeenCalledWith(`mossypath:data:${userId}`);
     
     // Verify loaded data matches saved data
     expect(loadedData).toEqual(testData);
@@ -64,7 +64,7 @@ describe('Storage Utility', () => {
     const loadedData = load(userId);
     
     // Verify localStorage.getItem was called correctly
-    expect(localStorage.getItem).toHaveBeenCalledWith(`gamelife:data:${userId}`);
+    expect(localStorage.getItem).toHaveBeenCalledWith(`mossypath:data:${userId}`);
     
     // Should return empty object
     expect(loadedData).toEqual({});
@@ -74,7 +74,7 @@ describe('Storage Utility', () => {
     const userId = 'invalid-json-user';
     
     // Set invalid JSON in localStorage
-    localStorage.setItem(`game-life-${userId}`, 'invalid-json');
+    localStorage.setItem(`mossypath-${userId}`, 'invalid-json');
     
     // Load data with invalid JSON
     const loadedData = load(userId);
