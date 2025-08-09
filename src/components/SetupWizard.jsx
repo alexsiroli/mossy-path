@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { save } from '../utils/storage';
+import { saveUserSettings, saveWeeklyActivities } from '../utils/db';
 import { ChevronRightIcon } from '@heroicons/react/24/solid';
 import { CubeIcon } from '@heroicons/react/24/outline';
 import { SunIcon, MoonIcon } from '@heroicons/react/24/outline';
@@ -185,14 +186,32 @@ export default function SetupWizard() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Normalizza i malus in oggetti coerenti { name, weekdaysOnly }
     const normalized = {
       ...data,
       malus: (data.malus || []).map((m) => (typeof m === 'string' ? { name: m, weekdaysOnly: true } : m))
     };
 
+    // Salva localmente
     save(normalized, user?.uid);
+    
+    // Salva in Firebase
+    try {
+      // Salva le impostazioni di base (baseActivities, sleep, malus) e indica che il setup è completo
+      await saveUserSettings(user?.uid, {
+        baseActivities: normalized.baseActivities,
+        sleep: normalized.sleep,
+        malus: normalized.malus
+      }, true); // true indica che il setup è completo
+      
+      // Salva le attività settimanali
+      await saveWeeklyActivities(user?.uid, normalized.dailyActivities || []);
+    } catch (error) {
+      console.error("Errore durante il salvataggio remoto:", error);
+      // Continua comunque, i dati sono salvati localmente
+    }
+    
     setShowCompletion(true);
     
     const startTime = Date.now();

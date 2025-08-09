@@ -42,13 +42,31 @@ if (typeof window !== 'undefined') {
   void processPending();
 }
 
-export async function saveUserSettings(userId, settings) {
+/**
+ * Salva le impostazioni dell'utente in Firebase
+ * @param {string} userId - ID dell'utente
+ * @param {Object} settings - Impostazioni da salvare
+ * @param {boolean} isSetupComplete - Indica se il setup è completo
+ */
+export async function saveUserSettings(userId, settings, isSetupComplete = false) {
   if (!userId) return;
+  
+  // Se è il setup completo, assicuriamoci che tutti i dati necessari siano presenti
+  const dataToSave = isSetupComplete ? {
+    ...settings,
+    setupCompleted: true,
+    setupCompletedAt: new Date().toISOString(),
+    lastSyncedAt: new Date().toISOString()
+  } : {
+    ...settings,
+    lastSyncedAt: new Date().toISOString()
+  };
+  
   try {
-    await setDoc(doc(db, 'users', userId, 'data', 'settings'), settings, { merge: true });
+    await setDoc(doc(db, 'users', userId, 'data', 'settings'), dataToSave, { merge: true });
   } catch (e) {
     console.warn('saveUserSettings error', e);
-    enqueueWrite({ pathSegments: ['users', userId, 'data', 'settings'], data: settings, options: { merge: true } });
+    enqueueWrite({ pathSegments: ['users', userId, 'data', 'settings'], data: dataToSave, options: { merge: true } });
   }
 }
 
@@ -91,6 +109,53 @@ export async function loadUserSettings(userId) {
   } catch (e) {
     console.warn('loadUserSettings error', e);
     return null;
+  }
+}
+
+/**
+ * Carica tutti i dati dell'utente da Firebase e li sincronizza con localStorage
+ * @param {string} userId - ID dell'utente
+ * @returns {Promise<boolean>} - true se l'utente ha completato il setup, false altrimenti
+ */
+export async function syncUserData(userId) {
+  if (!userId) return false;
+  
+  try {
+    // Carica le impostazioni utente
+    const settings = await loadUserSettings(userId);
+    // Carica le attività settimanali
+    const weeklyActivities = await loadWeeklyActivities(userId);
+    // Carica le todo list
+    const todoLists = await loadTodosRemote(userId);
+    
+    // Se l'utente ha già completato il setup, avrà impostazioni salvate
+    const hasCompletedSetup = settings && 
+      settings.baseActivities && 
+      settings.sleep && 
+      settings.malus;
+    
+    if (hasCompletedSetup) {
+      // Importa i dati da Firebase nel localStorage
+      const { load, save } = await import('./storage');
+      const localData = load(userId) || {};
+      
+      // Merge dei dati remoti con quelli locali, dando priorità ai remoti
+      save({
+        ...localData,
+        baseActivities: settings.baseActivities || localData.baseActivities || [],
+        sleep: settings.sleep || localData.sleep || {},
+        malus: settings.malus || localData.malus || [],
+        dailyActivities: weeklyActivities || localData.dailyActivities || [],
+        todos: todoLists || localData.todos || [],
+      }, userId);
+      
+      return true;
+    }
+    
+    return false;
+  } catch (e) {
+    console.warn('syncUserData error', e);
+    return false;
   }
 }
 
