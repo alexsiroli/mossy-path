@@ -26,6 +26,39 @@ const formatDate = (date) => {
   return `${date.getDate()} ${getMonthName(date.getMonth())} ${date.getFullYear()}`;
 };
 
+// Funzione per ottenere l'ora corrente nel timezone di Roma
+function romeNow() {
+  const now = new Date();
+  const s = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Rome' }));
+  return s;
+}
+
+// Funzione per gestire il cambio giorno alle 6:00 (5:00 UTC considerando il timezone)
+function appDayFrom(date) {
+  const d = new Date(date);
+  const hour = d.getHours();
+  if (hour < 5) {
+    d.setDate(d.getDate() - 1);
+  }
+  d.setHours(0,0,0,0);
+  return d;
+}
+
+// Funzione per aggiungere giorni rispettando la logica app
+function addAppDays(date, delta) {
+  const d = new Date(date);
+  // Portiamo l'orario a mezzogiorno per evitare il cutoff < 5:00 che sottrae un giorno
+  d.setHours(12, 0, 0, 0);
+  d.setDate(d.getDate() + delta);
+  return appDayFrom(d);
+}
+
+// Funzione per formattare la chiave data usando timezone Europe/Rome
+function formatKey(dateObj) {
+  // Use Europe/Rome timezone to produce a stable YYYY-MM-DD regardless of the runtime locale
+  return dateObj.toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' }); // en-CA gives ISO 8601 format
+}
+
 export default function Calendar() {
   const { user } = useAuth();
   const [data, setData] = useState(load(user?.uid));
@@ -46,7 +79,7 @@ export default function Calendar() {
   // Aggiorna le completions quando cambia la data selezionata
   useEffect(() => {
     if (selectedDate) {
-      const dateKey = selectedDate.toISOString().split('T')[0];
+      const dateKey = formatKey(selectedDate);
       setCompletions(data.completions?.[dateKey] || {});
     }
   }, [selectedDate, data]);
@@ -84,19 +117,21 @@ export default function Calendar() {
     
     // Giorni del mese corrente
     const currentMonthDays = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const appToday = appDayFrom(romeNow());
     
     for (let i = 1; i <= daysInMonth; i++) {
       const day = new Date(year, month, i);
-      const isToday = day.getDate() === today.getDate() && 
-                      day.getMonth() === today.getMonth() && 
-                      day.getFullYear() === today.getFullYear();
+      // Confronta direttamente la data del giorno con appToday (senza applicare appDayFrom al giorno)
+      const dayNormalized = new Date(day);
+      dayNormalized.setHours(0, 0, 0, 0);
+      const appTodayNormalized = new Date(appToday);
+      appTodayNormalized.setHours(0, 0, 0, 0);
+      const isToday = dayNormalized.getTime() === appTodayNormalized.getTime();
       
       currentMonthDays.push({
         date: day,
         isCurrentMonth: true,
-        isPast: day < today,
+        isPast: dayNormalized < appTodayNormalized,
         isToday
       });
     }
@@ -144,10 +179,9 @@ export default function Calendar() {
     setSelectedDate(day.date);
     setShowDayDetails(true);
     
-    // Carica le attività del giorno
-    const dateKey = day.date.toISOString().split('T')[0];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Carica le attività del giorno - usa direttamente la data del giorno cliccato
+    const dateKey = formatKey(day.date);
+    const appToday = appDayFrom(romeNow());
 
     // Usa dati freschi da storage per evitare ritardi di render
     const currentData = load(user?.uid);
@@ -238,6 +272,13 @@ export default function Calendar() {
       malusTasks.push(obj);
     });
     
+    const dayNormalized = new Date(day.date);
+    dayNormalized.setHours(0, 0, 0, 0);
+    const appTodayNormalized = new Date(appToday);
+    appTodayNormalized.setHours(0, 0, 0, 0);
+    const isToday = dayNormalized.getTime() === appTodayNormalized.getTime();
+    const isPast = dayNormalized < appTodayNormalized;
+    
     setDayTasks({
       all: tasks,
       base: baseTasks,
@@ -247,8 +288,8 @@ export default function Calendar() {
       malus: malusTasks,
       date: day.date,
       dateKey,
-      isPast: day.date < today,
-      isToday: day.isToday
+      isPast,
+      isToday
     });
   };
 
@@ -268,10 +309,10 @@ export default function Calendar() {
     // Slide-in animation (semplice)
     setSlideOffset(delta < 0 ? -16 : 16);
     // Aggiorna selezione e rientra a 0
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const isToday = newDate.toDateString() === today.toDateString();
-    const isPast = newDate < today;
+    const appToday = appDayFrom(romeNow());
+    const newDateNormalized = appDayFrom(newDate);
+    const isToday = newDateNormalized.getTime() === appToday.getTime();
+    const isPast = newDateNormalized < appToday;
     // Aggiorna i dettagli del giorno
     selectDay({ date: newDate, isToday, isPast });
     // Rientro dell'offset
@@ -299,7 +340,7 @@ export default function Calendar() {
   const addSpecificActivity = () => {
     if (!newActivity.name.trim() || !selectedDate) return;
     
-    const dateKey = selectedDate.toISOString().split('T')[0];
+    const dateKey = formatKey(selectedDate);
     const userData = load(user?.uid);
     
     const newSpecific = {
@@ -324,7 +365,7 @@ export default function Calendar() {
   const removeSpecificActivity = (specIndex) => {
     if (!selectedDate) return;
     
-    const dateKey = selectedDate.toISOString().split('T')[0];
+    const dateKey = formatKey(selectedDate);
     const userData = load(user?.uid);
     
     const updatedActivities = (userData.dailySpecific?.[dateKey] || []).filter((_, idx) => idx !== specIndex);
@@ -345,7 +386,7 @@ export default function Calendar() {
   const getPointsForDay = (date) => {
     if (isBeforeAccountCreation(date)) return null;
     
-    const dateKey = date.toISOString().split('T')[0];
+    const dateKey = formatKey(date);
     return calculatePoints(dateKey, data);
   };
   
@@ -359,8 +400,7 @@ export default function Calendar() {
   
   // Calcola lo streak attuale e il miglior streak
   const calculateStreaks = () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const appToday = appDayFrom(romeNow());
     
     let currentStreak = 0;
     let bestStreak = 0;
@@ -368,12 +408,11 @@ export default function Calendar() {
     
     // Controlla gli ultimi 30 giorni
     for (let i = 0; i < 30; i++) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
+      const d = addAppDays(appToday, -i);
       
       if (isBeforeAccountCreation(d)) break;
       
-      const key = d.toISOString().split('T')[0];
+      const key = formatKey(d);
       const pts = calculatePoints(key, data);
       
       if (pts >= 80) {
@@ -506,7 +545,7 @@ export default function Calendar() {
                   }`}
                 >
                   <div className="text-right text-sm font-medium">{day.date.getDate()}</div>
-                  {pointsColor && day.isPast && (
+                  {pointsColor && (day.isPast || day.isToday) && (
                     <div className="absolute bottom-1 left-1 right-1 h-2 rounded-full overflow-hidden">
                       <div className={`h-full ${pointsColor}`}></div>
                     </div>
@@ -574,7 +613,7 @@ export default function Calendar() {
                   } ${getPointsForDay(day.date)===100 ? 'glow-outline' : ''}`}
                 >
                   <div className="text-right text-sm font-medium">{day.date.getDate()}</div>
-                  {pointsColor && day.isPast && (
+                  {pointsColor && (day.isPast || day.isToday) && (
                     <div className="absolute bottom-1 left-1 right-1 h-2 rounded-full overflow-hidden">
                       <div className={`h-full ${pointsColor}`}></div>
                     </div>

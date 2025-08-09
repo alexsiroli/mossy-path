@@ -58,21 +58,21 @@ export function calculatePoints(dateKey, dataArg, userId = null) {
     
     // Helper function to add tasks to the array
     const addTask = (key, reason) => {
-      // console.log(`DEBUG - Adding ${part} task: ${key} (${reason})`);
+
       tasks.push(key);
     };
     
     // Process all daily activities
-    // console.log(`DEBUG - Scanning all dailyActivities for ${part} tasks:`);
+
     (data.dailyActivities || []).forEach((act, idx) => {
       if (!act) {
-        // console.log(`  daily-${idx}: SKIPPED (null or undefined activity)`);
+
         return;
       }
       
       const actPartOfDay = act.partOfDay || 'morning';
       const actWeekday = typeof act.weekday === 'string' ? act.weekday : (Array.isArray(act.days) ? act.days.join(',') : 'unknown');
-      // console.log(`  daily-${idx}: "${act.name}" (${actWeekday}, ${actPartOfDay}, repeat:${act.repeat || 1}, offset:${act.offset || 0})`);
+
       
       // Check if weekday matches
       let matchesWeekday = false;
@@ -86,30 +86,30 @@ export function calculatePoints(dateKey, dataArg, userId = null) {
           wNorm === weekdayEnShortNorm;
         
         if (!matchesWeekday) {
-          // console.log(`    ❌ Weekday doesn't match: '${act.weekday}' vs today's '${weekdayShort}/${weekdayFull}/${weekdayEnShort}'`);
+
           return;
         }
         // else {
-        //   console.log(`    ✅ Weekday matches: '${act.weekday}' matches today's '${weekdayShort}/${weekdayFull}/${weekdayEnShort}'`);
+
         // }
       } else if (Array.isArray(act.days)) {
         // legacy format: EN short names
         matchesWeekday = act.days.includes(weekdayEnShort);
         if (!matchesWeekday) {
-          // console.log(`    ❌ Weekday doesn't match: [${act.days.join(',')}] doesn't include today's '${weekdayEnShort}'`);
+
           return;
         }
         // else {
-        //   console.log(`    ✅ Weekday matches: [${act.days.join(',')}] includes today's '${weekdayEnShort}'`);
+
         // }
       } else {
-        // console.log(`    ❌ No weekday info found in activity`);
+
         return;
       }
       
       // If createdAt is missing, treat it as if created on the viewDate for repeat/offset calculation
       if (!act.createdAt) {
-        // console.log(`    ℹ️ No createdAt, using viewDate as default`);
+
         // Continue with processing - we'll use viewDate as the effective createdAt below
       }
       
@@ -130,17 +130,17 @@ export function calculatePoints(dateKey, dataArg, userId = null) {
       }
       const weeksDiff = Math.floor(diffMs / msInWeek);
       
-      // console.log(`    📅 Created: ${act.createdAt || 'N/A (using viewDate)'}, Weeks diff (start-of-day): ${weeksDiff}`);
+
       
       const repeat = Math.max(1, Number(act.repeat || 1));
       const offset = Math.max(0, Number(act.offset || 0));
       
       if (((weeksDiff - offset) % repeat) !== 0) {
-        // console.log(`    ❌ Doesn't match repeat pattern: (${weeksDiff} - ${offset}) % ${repeat} = ${(weeksDiff - offset) % repeat}`);
+
         return;
       }
       // else {
-      //   console.log(`    ✅ Matches repeat pattern: (${weeksDiff} - ${offset}) % ${repeat} = 0`);
+
       // }
       
       const partNorm = normalizePart(actPartOfDay);
@@ -148,32 +148,32 @@ export function calculatePoints(dateKey, dataArg, userId = null) {
         addTask(`daily-${idx}`, `matching weekday + repeat schedule (${act.name})`);
       }
       // else {
-      //   console.log(`    ❌ Part of day doesn't match: '${actPartOfDay}' (${partNorm}) vs required '${part}'`);
+
       // }
     });
     // specific for this day
-    // console.log(`DEBUG - Checking day-specific activities for ${dateKey}:`);
+
     const specificActivities = data.dailySpecific?.[dateKey] || [];
     // if (specificActivities.length === 0) {
-    //   console.log(`  No specific activities for ${dateKey}`);
+
     // }
     
     specificActivities.forEach((act, idx) => {
       if (!act) {
-        // console.log(`  spec-${idx}: SKIPPED (null or undefined activity)`);
+
         return;
       }
       
       const actPartOfDay = act.partOfDay || 'morning';
       const partNorm = normalizePart(actPartOfDay);
       
-      // console.log(`  spec-${idx}: "${act.name}" (${actPartOfDay})`);
+
       
       if (partNorm === part) {
         addTask(`spec-${idx}`, "day-specific activity");
       }
       // else {
-      //   console.log(`    ❌ Part of day doesn't match: '${actPartOfDay}' vs required '${part}'`);
+
       // }
     });
     
@@ -190,7 +190,7 @@ export function calculatePoints(dateKey, dataArg, userId = null) {
   const allDone = (keys) => {
     if (keys.length === 0) return false;
     const result = keys.every((k) => !!comps[k]);
-    // console.log(`DEBUG - allDone check for [${keys.join(', ')}]: ${result}`);
+
     return result;
   };
   
@@ -198,25 +198,15 @@ export function calculatePoints(dateKey, dataArg, userId = null) {
   const hasIncompleteTasks = (keys) => {
     if (keys.length === 0) return false;
     const result = !keys.every((k) => !!comps[k]);
-    // console.log(`DEBUG - hasIncompleteTasks check for [${keys.join(', ')}]: ${result}`);
+
     return result;
   };
 
   // Morning/Afternoon: 20 only if there is at least one task and all are done
-  console.log('DEBUG - Morning tasks:', morningTasks);
-  console.log('DEBUG - Morning tasks completions:', morningTasks.map(k => `${k}:${!!comps[k]}`));
-  console.log('DEBUG - Morning allDone:', allDone(morningTasks));
-  
-  console.log('DEBUG - Afternoon tasks:', afternoonTasks);
-  console.log('DEBUG - Afternoon tasks completions:', afternoonTasks.map(k => `${k}:${!!comps[k]}`));
-  console.log('DEBUG - Afternoon allDone:', allDone(afternoonTasks));
-  
   if (allDone(morningTasks)) {
-    console.log('DEBUG - Adding 20 points for morning');
     points += 20;
   }
   if (allDone(afternoonTasks)) {
-    console.log('DEBUG - Adding 20 points for afternoon');
     points += 20;
   }
 
@@ -232,20 +222,14 @@ export function calculatePoints(dateKey, dataArg, userId = null) {
   const hasMorningActivities = morningTasks.length > 0;
   const hasAfternoonActivities = afternoonTasks.length > 0;
   
-  console.log('DEBUG - Has morning activities:', hasMorningActivities);
-  console.log('DEBUG - Has afternoon activities:', hasAfternoonActivities);
-  console.log('DEBUG - Base done:', baseDone, 'Sleep done:', sleepDone);
-  
   // Only apply bonus if there are genuinely no tasks for that part
   if (!hasMorningActivities) {
     const morningBonus = applyNoPartBonus(true);
-    console.log('DEBUG - Applying morning bonus (no activities):', morningBonus);
     points += morningBonus;
   }
   
   if (!hasAfternoonActivities) {
     const afternoonBonus = applyNoPartBonus(true);
-    console.log('DEBUG - Applying afternoon bonus (no activities):', afternoonBonus);
     points += afternoonBonus;
   }
 
@@ -258,39 +242,18 @@ export function calculatePoints(dateKey, dataArg, userId = null) {
     if (comps[`malus-${idx}`]) points -= 10;
   });
 
-  console.log('DEBUG - Points before clamp:', points);
-  
   // Clamp & gentle top-off
   points = Math.max(0, points);
-  
-  // Solo per debug: controlliamo quali attività sono nel 'completions'
-  console.log('DEBUG - Checking completions keys:');
-  Object.keys(comps).forEach(key => {
-    if (key.startsWith('daily-')) {
-      console.log(`  ${key}: ${comps[key]}`);
-    }
-  });
-  
-  // Simplified logic: we now rely solely on the morningTasks and afternoonTasks arrays
-  // populated by collectPartTasks, which has been fixed to properly handle createdAt
-  console.log('DEBUG - Morning tasks from collectPartTasks:', morningTasks);
-  console.log('DEBUG - Afternoon tasks from collectPartTasks:', afternoonTasks);
   
   // Only give the 100-point bonus if all requirements are actually completed
   // This means all morning tasks and all afternoon tasks must be completed if they exist
   const allRequiredTasksCompleted = 
     (!hasMorningActivities || allDone(morningTasks)) &&
     (!hasAfternoonActivities || allDone(afternoonTasks));
-    
-  console.log('DEBUG - All required tasks completed:', allRequiredTasksCompleted);
-  console.log('DEBUG - Points >= 90:', points >= 90);
   
   if (points >= 90 && allRequiredTasksCompleted) { // Changed from 95 to 90
-    console.log('DEBUG - Applying 100 point bonus');
     points = 100;
   }
-  
-  console.log('DEBUG - Final points:', points);
   return points;
 }
 
