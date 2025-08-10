@@ -319,6 +319,67 @@ h3 {
   animation: glow-pulse 1.8s ease-in-out infinite;
 }
 
+/* Nuova animazione per i giorni perfetti nel calendario */
+@keyframes perfect-day-star {
+  0% { 
+    opacity: 0;
+    transform: scale(0.8);
+    filter: drop-shadow(0 0 0 rgba(16,185,129,0));
+  }
+  20% { 
+    opacity: 0.3;
+    transform: scale(0.9);
+    filter: drop-shadow(0 0 2px rgba(16,185,129,0.4));
+  }
+  50% { 
+    opacity: 1;
+    transform: scale(1);
+    filter: drop-shadow(0 0 8px rgba(16,185,129,0.8));
+  }
+  80% { 
+    opacity: 0.3;
+    transform: scale(0.9);
+    filter: drop-shadow(0 0 2px rgba(16,185,129,0.4));
+  }
+  100% { 
+    opacity: 0;
+    transform: scale(0.8);
+    filter: drop-shadow(0 0 0 rgba(16,185,129,0));
+  }
+}
+
+/* Nuova animazione per i giorni perfetti nel calendario */
+@keyframes perfect-day-border-glow {
+  0% { 
+    border-color: rgba(16,185,129,0.4);
+    box-shadow: 0 0 0 1px rgba(16,185,129,0.2);
+  }
+  25% { 
+    border-color: rgba(16,185,129,0.6);
+    box-shadow: 0 0 0 1px rgba(16,185,129,0.3);
+  }
+  50% { 
+    border-color: rgba(16,185,129,0.8);
+    box-shadow: 0 0 0 1px rgba(16,185,129,0.4);
+  }
+  75% { 
+    border-color: rgba(16,185,129,0.6);
+    box-shadow: 0 0 0 1px rgba(16,185,129,0.3);
+  }
+  100% { 
+    border-color: rgba(16,185,129,0.4);
+    box-shadow: 0 0 0 1px rgba(16,185,129,0.2);
+  }
+}
+
+.perfect-day-glow {
+  animation: perfect-day-border-glow 6s ease-in-out infinite;
+  border-radius: 0.75rem;
+  border: 2px solid rgba(16,185,129,0.4);
+}
+
+
+
 /* Animazione barra di progresso infinita */
 @keyframes progress-infinite {
   0% { transform: translateX(-100%); }

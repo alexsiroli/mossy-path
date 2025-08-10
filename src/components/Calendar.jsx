@@ -611,7 +611,7 @@ export default function Calendar() {
                       : 'bg-gray-100/30 dark:bg-gray-900/30 border-gray-100 dark:border-gray-800 text-gray-400 dark:text-gray-600'
                   } ${isDisabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer hover:border-emerald-500 dark:hover:border-emerald-500'} ${
                     selectedDate && day.date.toDateString() === selectedDate.toDateString() ? 'ring-2 ring-emerald-500 dark:ring-emerald-400' : ''
-                  } ${getPointsForDay(day.date)===100 ? 'glow-outline' : ''}`}
+                  } ${getPointsForDay(day.date)===100 ? 'perfect-day-glow' : ''}`}
                 >
                   <div className="text-right text-sm font-medium">{day.date.getDate()}</div>
                   {pointsColor && (day.isPast || day.isToday) && (
