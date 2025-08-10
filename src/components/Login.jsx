@@ -3,7 +3,7 @@ import useAuth from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import FloatingImage from './FloatingImage';
 import useDarkMode from '../hooks/useDarkMode';
-import { SunIcon, MoonIcon } from '@heroicons/react/24/outline';
+import { SunIcon, MoonIcon, UserIcon, KeyIcon } from '@heroicons/react/24/outline';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -46,7 +46,7 @@ export default function Login() {
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen">
-      <FloatingImage />
+      <FloatingImage isLogin={!isSignUp} />
       
       {/* Bottone toggle tema */}
       <button
@@ -61,30 +61,36 @@ export default function Login() {
         )}
       </button>
       
-      <div className="glass p-8 max-w-md w-full animate-fade-in-up">
-        <h1 className="text-2xl font-bold mb-6 text-center animate-fade-in-delay">
-          {isSignUp ? 'Registrati' : 'Accedi'} a MossyPath
+      <div className={`glass p-8 max-w-md w-full animate-fade-in-up ${isSignUp ? 'border-2 border-emerald-500 dark:border-emerald-700' : 'border-2 border-gray-300 dark:border-gray-700'}`}>
+        <h1 className={`text-2xl font-bold mb-6 text-center animate-fade-in-delay ${isSignUp ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-800 dark:text-gray-200'}`}>
+          {isSignUp ? '✨ Registrati' : '🔑 Accedi'} a MossyPath
         </h1>
         
         <form onSubmit={handleSubmit} className="space-y-4 animate-fade-in-delay-2">
-          <div className="animate-slide-in-left">
+          <div className="animate-slide-in-left relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 dark:text-gray-400">
+              <UserIcon className="h-5 w-5" />
+            </div>
             <input
               type="email"
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all duration-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              className={`w-full pl-10 pr-3 py-3 border ${isSignUp ? 'border-emerald-400 dark:border-emerald-600' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all duration-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
               required
             />
           </div>
           
-          <div className="animate-slide-in-right">
+          <div className="animate-slide-in-right relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 dark:text-gray-400">
+              <KeyIcon className="h-5 w-5" />
+            </div>
             <input
               type="password"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all duration-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              className={`w-full pl-10 pr-3 py-3 border ${isSignUp ? 'border-emerald-400 dark:border-emerald-600' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all duration-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
               required
             />
           </div>
@@ -93,8 +99,8 @@ export default function Login() {
             <p className="text-red-600 dark:text-red-400 text-sm animate-shake">{error}</p>
           )}
 
-          <button type="submit" className="btn-primary w-full animate-bounce-in">
-            {isSignUp ? 'Registrati' : 'Accedi'}
+          <button type="submit" className={`w-full py-3 rounded-lg font-semibold text-white shadow-md hover:shadow-lg active:scale-95 transition animate-bounce-in ${isSignUp ? 'bg-gradient-to-r from-emerald-500 to-emerald-700 hover:from-emerald-600 hover:to-emerald-800' : 'bg-gradient-to-r from-gray-600 to-gray-800 hover:from-gray-700 hover:to-gray-900 dark:from-gray-700 dark:to-gray-900 dark:hover:from-gray-600 dark:hover:to-gray-800'}`}>
+            {isSignUp ? '✨ Registrati' : '🔑 Accedi'}
           </button>
         </form>
 
@@ -109,7 +115,7 @@ export default function Login() {
 
         <button
           onClick={handleGoogleSignIn}
-          className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300 text-gray-900 dark:text-gray-100 hover:scale-105 animate-bounce-in-delay"
+          className={`w-full flex items-center justify-center gap-3 px-4 py-3 border ${isSignUp ? 'border-emerald-400 dark:border-emerald-600' : 'border-gray-300 dark:border-gray-600'} rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300 text-gray-900 dark:text-gray-100 hover:scale-105 animate-bounce-in-delay`}
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -122,9 +128,9 @@ export default function Login() {
 
         <button
           onClick={() => setIsSignUp(!isSignUp)}
-          className="w-full mt-4 text-sm text-gray-600 dark:text-gray-400 hover:underline hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors duration-300 animate-fade-in-delay-4"
+          className={`w-full mt-6 text-sm ${isSignUp ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-600 dark:text-gray-400'} hover:underline transition-colors duration-300 animate-fade-in-delay-4`}
         >
-          {isSignUp ? 'Hai già un account? Accedi' : 'Non hai un account? Registrati'}
+          {isSignUp ? '🔑 Hai già un account? Accedi' : '✨ Non hai un account? Registrati'}
         </button>
       </div>
     </main>

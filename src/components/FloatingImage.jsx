@@ -1,13 +1,13 @@
-export default function FloatingImage() {
+export default function FloatingImage({ isLogin = true }) {
   return (
     <div className="flex justify-center mb-12">
       <div className="relative">
         {/* Immagine principale con animazione fluttuante */}
-        <div className="animate-float-slow">
+        <div className={`animate-float-slow ${!isLogin ? 'scale-110' : ''}`}>
           <img 
             src="/icons/icon-1024.png"
             alt="MossyPath"
-            className="w-48 h-48 rounded-2xl shadow-lg"
+            className={`w-48 h-48 rounded-2xl shadow-lg ${!isLogin ? 'glow-emerald' : ''}`}
           />
         </div>
         
