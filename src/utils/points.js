@@ -258,9 +258,8 @@ export function calculatePoints(dateKey, dataArg, userId = null) {
 }
 
 export function getProgressColor(totalPoints) {
-  if (totalPoints >= 100) return 'bg-green-400'; // light green for 100
-  if (totalPoints > 95) return 'bg-green-600';   // dark green up to 95
-  if (totalPoints > 70) return 'bg-yellow-500';
-  if (totalPoints > 50) return 'bg-orange-500';
-  return 'bg-red-500';
+  if (totalPoints >= 80) return 'bg-green-500';   // verde per 80-100
+  if (totalPoints >= 60) return 'bg-yellow-500'; // giallo per 60-79
+  if (totalPoints >= 40) return 'bg-orange-500'; // arancione per 40-59
+  return 'bg-red-500';                           // rosso per 0-39
 }

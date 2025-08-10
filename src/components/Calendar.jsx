@@ -394,7 +394,8 @@ export default function Calendar() {
   const getColorForPoints = (points) => {
     if (points === null) return null;
     if (points >= 80) return 'bg-green-500';
-    if (points >= 50) return 'bg-yellow-500';
+    if (points >= 60) return 'bg-yellow-500';
+    if (points >= 40) return 'bg-orange-500';
     return 'bg-red-500';
   };
   

@@ -53,10 +53,9 @@ function normalizePart(part) {
 }
 
 function getPointsTextColor(pts) {
-  if (pts >= 100) return 'text-green-400';
-  if (pts > 95) return 'text-green-600';
-  if (pts > 70) return 'text-yellow-500';
-  if (pts > 50) return 'text-orange-500';
+  if (pts >= 80) return 'text-green-500';
+  if (pts >= 60) return 'text-yellow-500';
+  if (pts >= 40) return 'text-orange-500';
   return 'text-red-500';
 }
 
