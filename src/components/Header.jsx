@@ -2,23 +2,59 @@ import { NavLink } from 'react-router-dom';
 import { MoonIcon, SunIcon, CheckCircleIcon, CalendarIcon, HomeIcon, SparklesIcon, ChartBarIcon } from '@heroicons/react/24/solid';
 import useDarkMode from '../hooks/useDarkMode';
 import useAuth from '../hooks/useAuth';
+import { load } from '../utils/storage';
+import { useState, useEffect } from 'react';
 
 export default function Header({ onAccountClick }) {
   const [dark, setDark] = useDarkMode();
   const { user } = useAuth();
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Funzione per ottenere le iniziali dell'utente
   const getUserInitials = () => {
-    if (!user?.email) return '?';
-    const email = user.email;
-    const name = email.split('@')[0];
-    return name.substring(0, 2).toUpperCase();
+    if (!user?.uid) return '?';
+    
+    // Carica i dati personali dal localStorage
+    const userData = load(user.uid);
+    const { personalInfo } = userData || {};
+    
+    // Se abbiamo nome e cognome, usa le loro iniziali
+    if (personalInfo?.firstName && personalInfo?.lastName) {
+      const firstInitial = personalInfo.firstName.charAt(0).toUpperCase();
+      const lastInitial = personalInfo.lastName.charAt(0).toUpperCase();
+      return `${firstInitial}${lastInitial}`;
+    }
+    
+    // Fallback: usa le prime due lettere dell'email
+    if (user?.email) {
+      const email = user.email;
+      const name = email.split('@')[0];
+      return name.substring(0, 2).toUpperCase();
+    }
+    
+    return '?';
   };
+
+  // Effetto per ricaricare i dati quando cambiano
+  useEffect(() => {
+    const handleDataRefresh = () => {
+      setRefreshKey(prev => prev + 1);
+    };
+
+    window.addEventListener('dataRefresh', handleDataRefresh);
+    
+    return () => {
+      window.removeEventListener('dataRefresh', handleDataRefresh);
+    };
+  }, []);
 
   return (
     <header className="fixed top-2 inset-x-4 sm:inset-x-0 sm:max-w-screen-md sm:mx-auto bg-emerald-500/20 dark:bg-emerald-600/20 backdrop-blur-xl ring-1 ring-emerald-200/60 dark:ring-emerald-700/40 shadow-xl rounded-2xl px-5 py-3 flex items-center justify-between text-sm z-30">
       <nav className="flex items-center gap-4">
-        <span className="sm:hidden text-2xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">MossyPath</span>
+        <div className="sm:hidden flex items-center gap-3">
+          <img src="/icons/icon-192.png" alt="MossyPath Logo" className="w-8 h-8" />
+          <span className="text-2xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">MossyPath</span>
+        </div>
         <NavLink
           to="/todos"
           className={({ isActive }) =>
@@ -65,6 +101,7 @@ export default function Header({ onAccountClick }) {
       <div className="flex items-center gap-3">
         {/* Pallino con iniziali utente */}
         <button 
+          key={refreshKey}
           className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white text-sm font-semibold cursor-pointer hover:bg-emerald-600 transition-colors"
           onClick={onAccountClick}
         >

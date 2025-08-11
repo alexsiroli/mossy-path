@@ -78,24 +78,14 @@ export default function Dashboard() {
     sleepTasks.push(bed, wake);
   }
 
-  // Weekly repeating activities (support legacy days[] EN and new weekday IT)
-  const weekdayNameEn = weekdays[viewDate.getDay()];
-  const weekdayNameIt = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'][viewDate.getDay()];
-  (data.dailyActivities || []).forEach((act, idx) => {
-    if (!act) return;
-    let include = false;
-    if (typeof act.weekday === 'string') {
-      include = act.weekday === weekdayNameIt;
-    } else if (Array.isArray(act.days)) {
-      include = act.days.includes(weekdayNameEn);
-    }
-    if (!include) return;
+  // Weekly repeating activities
+  const weekdayName = weekdays[viewDate.getDay()];
+  data.dailyActivities?.forEach((act, idx) => {
+    if (!act.days.includes(weekdayName)) return;
+    // repeat logic
     const start = new Date(act.createdAt || dateKey);
-    const msWeek = 7 * 24 * 60 * 60 * 1000;
-    const weeksDiff = Math.floor((viewDate - start) / msWeek);
-    const repeat = Math.max(1, Number(act.repeat || 1));
-    const offset = Math.max(0, Number(act.offset || 0));
-    if (((weeksDiff - offset) % repeat) !== 0) return;
+    const weeksDiff = Math.floor((viewDate - start) / (7 * 24 * 60 * 60 * 1000));
+    if (weeksDiff % (act.repeat || 1) !== 0) return;
     const obj = {
       key: `daily-${idx}`,
       label: act.name,
@@ -242,7 +232,7 @@ export default function Dashboard() {
             </div>
           );
         })()}
-        <p className="text-sm mt-1">Punti del giorno: {countPoints()} / 100</p>
+        <p className="text-sm mt-1">Punti del giorno: {countPoints()} / 100{isFuture && ' (solo lettura)'}</p>
       </div>
 
       <hr className="animate-fade-in-delay-4" />

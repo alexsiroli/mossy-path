@@ -314,116 +314,126 @@ export default function Today() {
 
 
       {/* Sezioni organizzate in grid per layout più moderno */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Attività base e Sonno */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Attività base */}
           {baseTasks.length > 0 && (
             <SectionCard title="Attività base" collapsible expanded={expanded.base} onToggle={() => toggle('base')} className="bg-gradient-to-br from-emerald-500/40 to-emerald-600/30 ring-1 ring-emerald-500/40 dark:ring-emerald-600/40">
-              {baseTasks.map((t) => (
-                <TaskItem
-                  key={t.key}
-                  label={t.label}
-                  checked={!!completions[t.key]}
-                  onChange={(v) => handleToggle(t.key, v)}
-                  hideCheckbox={isFuture}
-                />
-              ))}
+              <div className="space-y-3">
+                {baseTasks.map((t) => (
+                  <TaskItem
+                    key={t.key}
+                    label={t.label}
+                    checked={!!completions[t.key]}
+                    onChange={(v) => handleToggle(t.key, v)}
+                    hideCheckbox={isFuture}
+                  />
+                ))}
+              </div>
             </SectionCard>
           )}
           
           {/* Sonno */}
           {sleepTasks.length > 0 && (
             <SectionCard title="Sonno" collapsible expanded={expanded.sleep} onToggle={() => toggle('sleep')} className="bg-gradient-to-br from-blue-500/40 to-blue-600/30 ring-1 ring-blue-500/40 dark:ring-blue-600/40">
-              {sleepTasks.map((t) => (
-                <TaskItem
-                  key={t.key}
-                  label={t.label}
-                  checked={!!completions[t.key]}
-                  onChange={(v) => handleToggle(t.key, v)}
-                  hideCheckbox={isFuture}
-                />
-              ))}
+              <div className="space-y-3">
+                {sleepTasks.map((t) => (
+                  <TaskItem
+                    key={t.key}
+                    label={t.label}
+                    checked={!!completions[t.key]}
+                    onChange={(v) => handleToggle(t.key, v)}
+                    hideCheckbox={isFuture}
+                  />
+                ))}
+              </div>
             </SectionCard>
           )}
         </div>
         
         {/* Attività quotidiane e Malus */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Mattina */}
           {morningTasks.length > 0 && (
             <SectionCard title="Mattina" collapsible expanded={expanded.morning} onToggle={() => toggle('morning')} className="bg-gradient-to-br from-amber-500/40 to-amber-600/30 ring-1 ring-amber-500/40 dark:ring-amber-600/40">
-              {morningTasks.map((t) => (
-                <TaskItem
-                  key={t.key}
-                  label={t.label}
-                  checked={!!completions[t.key]}
-                  onChange={(v) => handleToggle(t.key, v)}
-                  hideCheckbox={isFuture}
-                  onDelete={
-                    t.isSpecific && !isFuture
-                      ? () => {
-                          const updated = load(user?.uid);
-                          const list = (updated.dailySpecific?.[dateKey] || []).filter(
-                            (_, i) => i !== t.specIndex
-                          );
-                          const newDailySpecific = {
-                            ...(updated.dailySpecific || {}),
-                            [dateKey]: list,
-                          };
-                          save({ ...updated, dailySpecific: newDailySpecific }, user?.uid);
-                          setData(load(user?.uid));
-                        }
-                      : undefined
-                  }
-                />
-              ))}
+              <div className="space-y-3">
+                {morningTasks.map((t) => (
+                  <TaskItem
+                    key={t.key}
+                    label={t.label}
+                    checked={!!completions[t.key]}
+                    onChange={(v) => handleToggle(t.key, v)}
+                    hideCheckbox={isFuture}
+                    onDelete={
+                      t.isSpecific && !isFuture
+                        ? () => {
+                            const updated = load(user?.uid);
+                            const list = (updated.dailySpecific?.[dateKey] || []).filter(
+                              (_, i) => i !== t.specIndex
+                            );
+                            const newDailySpecific = {
+                              ...(updated.dailySpecific || {}),
+                              [dateKey]: list,
+                            };
+                            save({ ...updated, dailySpecific: newDailySpecific }, user?.uid);
+                            setData(load(user?.uid));
+                          }
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
             </SectionCard>
           )}
           
           {/* Pomeriggio */}
           {afternoonTasks.length > 0 && (
             <SectionCard title="Pomeriggio" collapsible expanded={expanded.afternoon} onToggle={() => toggle('afternoon')} className="bg-gradient-to-br from-orange-500/40 to-orange-600/30 ring-1 ring-orange-500/40 dark:ring-orange-600/40">
-              {afternoonTasks.map((t) => (
-                <TaskItem
-                  key={t.key}
-                  label={t.label}
-                  checked={!!completions[t.key]}
-                  onChange={(v) => handleToggle(t.key, v)}
-                  hideCheckbox={isFuture}
-                  onDelete={
-                    t.isSpecific && !isFuture
-                      ? () => {
-                          const updated = load(user?.uid);
-                          const list = (updated.dailySpecific?.[dateKey] || []).filter(
-                            (_, i) => i !== t.specIndex
-                          );
-                          const newDailySpecific = {
-                            ...(updated.dailySpecific || {}),
-                            [dateKey]: list,
-                          };
-                          save({ ...updated, dailySpecific: newDailySpecific }, user?.uid);
-                          setData(load(user?.uid));
-                        }
-                      : undefined
-                  }
-                />
-              ))}
+              <div className="space-y-3">
+                {afternoonTasks.map((t) => (
+                  <TaskItem
+                    key={t.key}
+                    label={t.label}
+                    checked={!!completions[t.key]}
+                    onChange={(v) => handleToggle(t.key, v)}
+                    hideCheckbox={isFuture}
+                    onDelete={
+                      t.isSpecific && !isFuture
+                        ? () => {
+                            const updated = load(user?.uid);
+                            const list = (updated.dailySpecific?.[dateKey] || []).filter(
+                              (_, i) => i !== t.specIndex
+                            );
+                            const newDailySpecific = {
+                              ...(updated.dailySpecific || {}),
+                              [dateKey]: list,
+                            };
+                            save({ ...updated, dailySpecific: newDailySpecific }, user?.uid);
+                            setData(load(user?.uid));
+                          }
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
             </SectionCard>
           )}
           
           {/* Malus */}
           {malusTasks.length > 0 && (
             <SectionCard title="Malus" collapsible expanded={expanded.malus} onToggle={() => toggle('malus')} className="bg-gradient-to-br from-red-500/40 to-red-600/30 ring-1 ring-red-500/40 dark:ring-red-600/40">
-              {malusTasks.map((t) => (
-                <TaskItem
-                  key={t.key}
-                  label={t.label}
-                  checked={!!completions[t.key]}
-                  onChange={(v) => handleToggle(t.key, v)}
-                  hideCheckbox={isFuture}
-                />
-              ))}
+              <div className="space-y-3">
+                {malusTasks.map((t) => (
+                  <TaskItem
+                    key={t.key}
+                    label={t.label}
+                    checked={!!completions[t.key]}
+                    onChange={(v) => handleToggle(t.key, v)}
+                    hideCheckbox={isFuture}
+                  />
+                ))}
+              </div>
             </SectionCard>
           )}
         </div>

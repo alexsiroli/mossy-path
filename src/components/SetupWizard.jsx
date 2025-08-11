@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { save } from '../utils/storage';
 import { saveUserSettings, saveWeeklyActivities } from '../utils/db';
@@ -7,15 +7,35 @@ import { CubeIcon } from '@heroicons/react/24/outline';
 import { SunIcon, MoonIcon } from '@heroicons/react/24/outline';
 import useAuth from '../hooks/useAuth';
 import useDarkMode from '../hooks/useDarkMode';
+import { useSwipeable } from 'react-swipeable';
 
 export default function SetupWizard() {
   const [step, setStep] = useState(1);
-  const [direction, setDirection] = useState('right');
+  const [direction, setDirection] = useState(''); // Inizializzato vuoto per centrare la prima card
   const [key, setKey] = useState(0);
   const [showValidation, setShowValidation] = useState(false);
   const [showCompletion, setShowCompletion] = useState(false);
   const [completionProgress, setCompletionProgress] = useState(0);
+  const [touchStart, setTouchStart] = useState(0);
+  const [touchOffset, setTouchOffset] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
+  const [showDailyForm, setShowDailyForm] = useState(false);
+  const [editingDailyIndex, setEditingDailyIndex] = useState(null);
+  const [dailyForm, setDailyForm] = useState({
+    name: '',
+    weekday: 'Lun',
+    partOfDay: 'morning',
+    repeat: 1,
+    offset: 0,
+    showAdvanced: false
+  });
   const [data, setData] = useState({
+    personalInfo: {
+      firstName: '',
+      lastName: '',
+      age: '',
+      city: ''
+    },
     baseActivities: ['', '', '', '', ''],
     sleep: { bedtime: '23:00', wakeup: '07:00' },
     dailyActivities: [],
@@ -28,6 +48,19 @@ export default function SetupWizard() {
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
   };
+
+  // Gestione animazione di entrata per le nuove cards
+  useEffect(() => {
+    if (key > 0) {
+      // Aspetta un frame per permettere il render della nuova card
+      requestAnimationFrame(() => {
+        // La card parte dalla posizione di uscita e torna al centro
+        setTimeout(() => {
+          setDirection('');
+        }, 100); // Aumentato il delay per assicurarsi che l'animazione sia completa
+      });
+    }
+  }, [key]);
 
   // Lista delle abitudini casuali
   const randomHabits = [
@@ -148,12 +181,23 @@ export default function SetupWizard() {
     return randomMalus[randomIndex];
   };
 
-  const totalSteps = 7; // Aumentato per includere le due pagine di benvenuto
+  const totalSteps = 8; // Aumentato per includere la pagina delle informazioni personali
 
   const handleNext = () => {
     if (step < totalSteps) {
-      // Validazione per le attività base (step 4)
-      if (step === 4) {
+      // Validazione per le informazioni personali (step 2)
+      if (step === 2) {
+        const { firstName, lastName, age, city } = data.personalInfo;
+        const ageNum = parseInt(age);
+        if (!firstName.trim() || !lastName.trim() || !age.trim() || !city.trim() || 
+            isNaN(ageNum) || ageNum < 12 || ageNum > 99) {
+          setShowValidation(true);
+          return; // Non permette di continuare
+        }
+      }
+      
+      // Validazione per le attività base (step 5)
+      if (step === 5) {
         const allActivitiesFilled = data.baseActivities.every(activity => activity.trim() !== '');
         if (!allActivitiesFilled) {
           setShowValidation(true);
@@ -161,8 +205,8 @@ export default function SetupWizard() {
         }
       }
       
-      // Validazione per i malus (step 7)
-      if (step === 7) {
+      // Validazione per i malus (step 8)
+      if (step === 8) {
         const allMalusFilled = data.malus.every(malus => malus.trim() !== '');
         if (!allMalusFilled) {
           setShowValidation(true);
@@ -174,6 +218,9 @@ export default function SetupWizard() {
       setDirection('right');
       setKey(prev => prev + 1);
       setStep(step + 1);
+      
+      // Reset touch offset per la nuova card
+      setTouchOffset(0);
     }
   };
 
@@ -183,8 +230,69 @@ export default function SetupWizard() {
       setDirection('left');
       setKey(prev => prev + 1);
       setStep(step - 1);
+      
+      // Reset touch offset per la nuova card
+      setTouchOffset(0);
     }
   };
+
+  // Gestione swipe per navigazione
+  const handleSwipeLeft = () => {
+    // Swipe sinistra = vai avanti
+    if (step < totalSteps && !showCompletion) {
+      handleNext();
+    }
+  };
+
+  const handleSwipeRight = () => {
+    // Swipe destra = vai indietro
+    if (step > 1 && !showCompletion) {
+      handlePrev();
+    }
+  };
+
+  // Gestione touch per movimento fluido della card
+  const handleTouchStart = (e) => {
+    setTouchStart(e.touches[0].clientX);
+    setIsSwiping(true);
+    setTouchOffset(0);
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isSwiping) return;
+    const currentTouch = e.touches[0].clientX;
+    const offset = currentTouch - touchStart;
+    setTouchOffset(offset);
+  };
+
+  const handleTouchEnd = () => {
+    if (!isSwiping) return;
+    setIsSwiping(false);
+    
+    // Determina la direzione dello swipe
+    if (Math.abs(touchOffset) > 50) {
+      if (touchOffset > 0) {
+        // Swipe destra = vai indietro
+        handleSwipeRight();
+      } else {
+        // Swipe sinistra = vai avanti
+        handleSwipeLeft();
+      }
+    }
+    
+    // Reset offset
+    setTouchOffset(0);
+  };
+
+  // Configurazione swipe
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: handleSwipeLeft,
+    onSwipedRight: handleSwipeRight,
+    preventDefaultTouchmoveEvent: true,
+    trackMouse: false,
+    delta: 50, // Soglia minima per attivare lo swipe
+    swipeDuration: 500, // Durata massima dello swipe
+  });
 
   const handleSave = async () => {
     // Normalizza i malus in oggetti coerenti { name, weekdaysOnly }
@@ -193,18 +301,26 @@ export default function SetupWizard() {
       malus: (data.malus || []).map((m) => (typeof m === 'string' ? { name: m, weekdaysOnly: true } : m))
     };
 
-
-
-    // Salva SOLO su Firebase - no localStorage
+    // Salva sia nel localStorage che nel database
     try {
-
-      
-      // Salva tutto tramite la nuova funzione save che gestisce Firebase puro
+      // Salva nel localStorage
       await save(normalized, user?.uid);
       
-
+      // Salva nel database Firebase
+      await saveUserSettings(user?.uid, {
+        personalInfo: data.personalInfo,
+        baseActivities: data.baseActivities,
+        sleep: data.sleep,
+        malus: normalized.malus,
+        dailyActivities: data.dailyActivities
+      }, true); // true = setup completato
+      
+      // Salva le attività settimanali separatamente
+      await saveWeeklyActivities(user?.uid, data.dailyActivities);
+      
     } catch (error) {
-
+      console.error('Errore durante il salvataggio:', error);
+      // Anche se fallisce il salvataggio remoto, procedi con il completamento
     }
     
     setShowCompletion(true);
@@ -229,6 +345,16 @@ export default function SetupWizard() {
     requestAnimationFrame(updateProgress);
   };
 
+  const updatePersonalInfo = (field, value) => {
+    setData({
+      ...data,
+      personalInfo: {
+        ...data.personalInfo,
+        [field]: value
+      }
+    });
+  };
+
   const updateBaseActivity = (index, value) => {
     const newActivities = [...data.baseActivities];
     newActivities[index] = value;
@@ -247,12 +373,57 @@ export default function SetupWizard() {
     setData({ ...data, sleep: { ...data.sleep, [field]: value } });
   };
 
+  const openNewDaily = () => {
+    setEditingDailyIndex(null);
+    setDailyForm({ name: '', weekday: 'Lun', partOfDay: 'morning', repeat: 1, offset: 0, showAdvanced: false });
+    setShowDailyForm(true);
+  };
+
+  const openEditDaily = (idx) => {
+    setEditingDailyIndex(idx);
+    const a = data.dailyActivities[idx];
+    setDailyForm({ 
+      name: a.name, 
+      weekday: a.weekday || 'Lun', 
+      partOfDay: a.partOfDay || 'morning', 
+      repeat: a.repeat || 1, 
+      offset: a.offset || 0,
+      showAdvanced: false
+    });
+    setShowDailyForm(true);
+  };
+
+  const submitDaily = () => {
+    if (!dailyForm.name.trim()) return;
+    const payload = { 
+      ...dailyForm, 
+      repeat: Math.max(1, Number(dailyForm.repeat || 1)), 
+      offset: Math.max(0, Number(dailyForm.offset || 0)), 
+      createdAt: new Date().toISOString() 
+    };
+    
+    if (editingDailyIndex === null) {
+      setData({
+        ...data,
+        dailyActivities: [payload, ...data.dailyActivities]
+      });
+    } else {
+      const list = [...data.dailyActivities];
+      list[editingDailyIndex] = { ...payload, createdAt: list[editingDailyIndex].createdAt || payload.createdAt };
+      setData({ ...data, dailyActivities: list });
+    }
+    
+    setShowDailyForm(false);
+    setEditingDailyIndex(null);
+  };
+
   const addDailyActivity = () => {
     const newActivity = {
       name: '',
-      days: [],
+      weekday: 'Lun',
       partOfDay: 'morning',
       repeat: 1,
+      offset: 0,
       createdAt: new Date().toISOString()
     };
     setData({
@@ -378,6 +549,93 @@ export default function SetupWizard() {
 
       case 2:
         return (
+          <div className="h-full flex flex-col justify-center">
+            <div className="animate-fade-in-up">
+              <h1 className="text-3xl font-bold mb-2 text-center text-emerald-600 dark:text-emerald-400">Informazioni Personali</h1>
+              <p className="text-sm text-center text-gray-600 dark:text-gray-400 mb-6 px-4">
+                Personalizza il tuo profilo MossyPath
+              </p>
+              
+              <div className="px-4 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-emerald-600 dark:text-emerald-400">Nome</label>
+                    <input
+                      type="text"
+                      placeholder="Il tuo nome"
+                      value={data.personalInfo.firstName}
+                      onChange={(e) => updatePersonalInfo('firstName', e.target.value)}
+                      className={`w-full px-3 py-3 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all duration-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                        data.personalInfo.firstName.trim() !== '' 
+                          ? 'border-green-500 dark:border-green-500 ring-green-500 dark:ring-green-500' 
+                          : showValidation && data.personalInfo.firstName.trim() === ''
+                          ? 'border-red-500 dark:border-red-500 ring-red-500 dark:ring-red-500' 
+                          : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-emerald-600 dark:text-emerald-400">Cognome</label>
+                    <input
+                      type="text"
+                      placeholder="Il tuo cognome"
+                      value={data.personalInfo.lastName}
+                      onChange={(e) => updatePersonalInfo('lastName', e.target.value)}
+                      className={`w-full px-3 py-3 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all duration-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                        data.personalInfo.lastName.trim() !== '' 
+                          ? 'border-green-500 dark:border-green-500 ring-green-500 dark:ring-green-500' 
+                          : showValidation && data.personalInfo.lastName.trim() === ''
+                          ? 'border-red-500 dark:border-red-500 ring-red-500 dark:ring-red-500' 
+                          : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-emerald-600 dark:text-emerald-400">Età</label>
+                    <input
+                      type="number"
+                      min="12"
+                      max="99"
+                      placeholder="La tua età"
+                      value={data.personalInfo.age}
+                      onChange={(e) => updatePersonalInfo('age', e.target.value)}
+                      className={`w-full px-3 py-3 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all duration-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                        data.personalInfo.age.trim() !== '' && data.personalInfo.age >= 12 && data.personalInfo.age <= 99
+                          ? 'border-green-500 dark:border-green-500 ring-green-500 dark:border-green-500' 
+                          : showValidation && (data.personalInfo.age.trim() === '' || data.personalInfo.age < 12 || data.personalInfo.age > 99)
+                          ? 'border-red-500 dark:border-red-500 ring-red-500 dark:ring-red-500' 
+                          : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                    />
+
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-emerald-600 dark:text-emerald-400">Città</label>
+                    <input
+                      type="text"
+                      placeholder="La tua città"
+                      value={data.personalInfo.city}
+                      onChange={(e) => updatePersonalInfo('city', e.target.value)}
+                      className={`w-full px-3 py-3 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-all duration-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                        data.personalInfo.city.trim() !== '' 
+                          ? 'border-green-500 dark:border-green-500 ring-green-500 dark:border-green-500' 
+                          : showValidation && data.personalInfo.city.trim() === ''
+                          ? 'border-red-500 dark:border-red-500 ring-red-500 dark:ring-red-500' 
+                          : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 3:
+        return (
           <div className="text-center h-full flex flex-col justify-center">
             <div className="animate-fade-in-up">
               <h1 className="text-3xl font-bold mb-6">Iniziamo il <span className="text-emerald-600 dark:text-emerald-400">Viaggio</span></h1>
@@ -388,7 +646,7 @@ export default function SetupWizard() {
           </div>
         );
 
-      case 3:
+      case 4:
         return (
           <div className="text-center h-full flex flex-col justify-center">
             <div className="animate-fade-in-up">
@@ -400,7 +658,7 @@ export default function SetupWizard() {
           </div>
         );
 
-      case 4:
+      case 5:
         return (
           <div className="h-full flex flex-col justify-center">
             <div className="animate-fade-in-up">
@@ -452,7 +710,7 @@ export default function SetupWizard() {
           </div>
         );
 
-      case 5:
+      case 6:
         return (
           <div className="h-full flex flex-col justify-center">
             <div className="animate-fade-in-up">
@@ -487,96 +745,101 @@ export default function SetupWizard() {
           </div>
         );
 
-      case 6:
+      case 7:
         return (
           <div className="h-full flex flex-col justify-center">
             <div className="animate-fade-in-up">
-              <h1 className="text-3xl font-bold mb-2 text-center text-emerald-600 dark:text-emerald-400">Attività Quotidiane</h1>
-              <p className="text-sm text-center text-gray-600 dark:text-gray-400 mb-1 px-4">
-                10 punti attività della mattina
+              <h1 className="text-3xl font-bold mb-2 text-center text-emerald-600 dark:text-emerald-400">Attività Settimanali</h1>
+              <p className="text-sm text-center text-gray-600 dark:text-gray-400 mb-4 px-4">
+                10 punti per ogni attività completata
               </p>
-              <p className="text-sm text-center text-gray-600 dark:text-gray-400 mb-6 px-4">
-                10 punti attività del pomeriggio
-              </p>
-              <p className="mb-8 text-center px-4">
-                Sono attività che devi fare con <strong className="text-emerald-600 dark:text-emerald-400">regolarità</strong> ma non tutti i giorni, più avanti avrai modo di <strong className="text-emerald-600 dark:text-emerald-400">aggiungerne</strong> quante ne vorrai.
+              <p className="mb-6 text-center px-4">
+                Aggiungi attività che devi fare con <strong className="text-emerald-600 dark:text-emerald-400">regolarità settimanale</strong>.
               </p>
               
-              <div className="px-4 space-y-3 max-h-80 overflow-y-auto">
-                {data.dailyActivities.map((activity, index) => (
-                  <div key={index} className="glass p-3">
-                    <div className="flex justify-between items-center mb-3">
-                      <input
-                        type="text"
-                        placeholder="Nome attività"
-                        value={activity.name}
-                        onChange={(e) => updateDailyActivity(index, 'name', e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 mr-3"
-                      />
-                      <button
-                        onClick={() => removeDailyActivity(index)}
-                        className="btn-danger text-sm px-3 py-2"
-                      >
-                        Elimina
-                      </button>
-                    </div>
-                    
-                    <div className="mb-3">
-                      <div className="grid grid-cols-7 gap-1 ml-4">
-                        {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(day => (
-                          <label key={day} className="flex flex-col items-center text-xs">
-                            <input
-                              type="checkbox"
-                              checked={activity.days.includes(day)}
-                              onChange={(e) => {
-                                const newDays = e.target.checked
-                                  ? [...activity.days, day]
-                                  : activity.days.filter(d => d !== day);
-                                updateDailyActivity(index, 'days', newDays);
-                              }}
-                              className="mb-1"
-                            />
-                            <span>{day}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Parte del giorno:</label>
-                        <select
-                          value={activity.partOfDay}
-                          onChange={(e) => updateDailyActivity(index, 'partOfDay', e.target.value)}
-                          className="select"
-                        >
-                          <option value="morning">Mattina</option>
-                          <option value="afternoon">Pomeriggio</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Ripeti ogni:</label>
-                        <select
-                          value={activity.repeat}
-                          onChange={(e) => updateDailyActivity(index, 'repeat', parseInt(e.target.value))}
-                          className="select"
-                        >
-                          <option value={1}>1 settimana</option>
-                          <option value={2}>2 settimane</option>
-                          <option value={3}>3 settimane</option>
-                          <option value={4}>4 settimane</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="px-4 space-y-4 max-h-80 overflow-y-auto">
+                {/* Lista attività ordinate per giorno e parte del giorno */}
+                {(() => {
+                  const weekdays = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+                  const parts = ['morning', 'afternoon'];
+                  
+                  return weekdays.map(weekday => 
+                    parts.map(part => {
+                      const activities = data.dailyActivities.filter(a => 
+                        a.weekday === weekday && a.partOfDay === part
+                      );
+                      
+                      if (activities.length === 0) return null;
+                      
+                      return (
+                        <div key={`${weekday}-${part}`} className="glass p-3 rounded-xl">
+                          <div className="font-semibold mb-2 text-emerald-600 dark:text-emerald-400">
+                            {weekday === 'Lun' ? 'Lunedì' : 
+                             weekday === 'Mar' ? 'Martedì' : 
+                             weekday === 'Mer' ? 'Mercoledì' : 
+                             weekday === 'Gio' ? 'Giovedì' : 
+                             weekday === 'Ven' ? 'Venerdì' : 
+                             weekday === 'Sab' ? 'Sabato' : 'Domenica'} - {part === 'morning' ? 'Mattina' : 'Pomeriggio'}
+                          </div>
+                          <ul className="space-y-2">
+                            {activities.map((activity, idx) => {
+                              const globalIdx = data.dailyActivities.findIndex(a => a === activity);
+                              return (
+                                <li key={idx} className="flex items-center justify-between p-2 bg-white/20 dark:bg-black/20 rounded-lg">
+                                  <div>
+                                    <div className="font-medium">{activity.name}</div>
+                                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                                      Ogni {activity.repeat || 1} sett.{(activity.offset || 0) > 0 ? ` (offset ${activity.offset})` : ''}
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <button 
+                                      className="p-1 rounded hover:bg-white/20 text-emerald-600 dark:text-emerald-400" 
+                                      onClick={() => openEditDaily(globalIdx)}
+                                      aria-label="Modifica"
+                                    >
+                                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                                      </svg>
+                                    </button>
+                                    <button 
+                                      className="p-1 rounded hover:bg-red-500/20 text-red-600" 
+                                      onClick={() => removeDailyActivity(globalIdx)}
+                                      aria-label="Elimina"
+                                    >
+                                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      );
+                    })
+                  ).filter(Boolean);
+                })()}
+                
+                {/* Bottone per aggiungere nuove attività */}
+                <div className="px-4 mt-4">
+                  <button
+                    onClick={openNewDaily}
+                    className="w-full py-4 px-4 border-2 border-dashed border-emerald-400 dark:border-emerald-600 rounded-xl text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all duration-300 hover:scale-105 font-medium"
+                  >
+                    + Aggiungi Attività Settimanale
+                  </button>
+                  <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
+                    Le attività si possono aggiungere e modificare anche in futuro
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         );
 
-      case 7:
+      case 8:
         return (
           <div className="h-full flex flex-col justify-center">
             <div className="animate-fade-in-up">
@@ -729,13 +992,29 @@ export default function SetupWizard() {
         </div>
       </div>
 
-      {/* Contenuto principale */}
+      {/* Contenuto principale con supporto swipe */}
       <div className="flex-1 flex flex-col justify-start px-4 -mt-10">
         <div 
+          {...swipeHandlers}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
           key={key}
-          className={`glass max-w-md mx-auto w-full h-[66vh] flex flex-col overflow-y-auto ${
-            showCompletion ? '' : direction === 'right' ? 'animate-slide-in-right' : 'animate-slide-in-left'
+          className={`glass max-w-md mx-auto w-full h-[66vh] flex flex-col overflow-y-auto cursor-grab active:cursor-grabbing transition-transform duration-300 ${
+            showCompletion ? '' : ''
           }`}
+          style={{
+            transform: isSwiping 
+              ? `translateX(${touchOffset * 0.3}px)` 
+              : (key === 0 && step === 1)
+                ? 'translateX(0)' // Prima card sempre al centro
+                : direction === 'right' 
+                  ? 'translateX(100%)' 
+                  : direction === 'left' 
+                    ? 'translateX(-100%)' 
+                    : 'translateX(0)',
+            opacity: isSwiping ? Math.max(0.7, 1 - Math.abs(touchOffset) * 0.001) : 1
+          }}
         >
           <div className="flex-1 p-6">
             {renderStep()}
@@ -806,6 +1085,113 @@ export default function SetupWizard() {
           </div>
         </div>
       )}
+
+      {/* Finestra modale per attività settimanali */}
+      {showDailyForm && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowDailyForm(false)}></div>
+          <div className="relative w-full max-w-md bg-white/30 dark:bg-black/30 backdrop-blur-xl ring-1 ring-white/50 dark:ring-white/10 rounded-2xl shadow-2xl p-4">
+            <h3 className="text-lg font-semibold mb-3 text-emerald-700 dark:text-emerald-300">
+              {editingDailyIndex === null ? 'Nuova attività settimanale' : 'Modifica attività'}
+            </h3>
+            <div className="space-y-3">
+              <input 
+                type="text" 
+                className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" 
+                placeholder="Nome attività" 
+                value={dailyForm.name} 
+                onChange={(e) => setDailyForm({ ...dailyForm, name: e.target.value })} 
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <select 
+                  className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" 
+                  value={dailyForm.weekday} 
+                  onChange={(e) => setDailyForm({ ...dailyForm, weekday: e.target.value })}
+                >
+                  <option value="Lun">Lunedì</option>
+                  <option value="Mar">Martedì</option>
+                  <option value="Mer">Mercoledì</option>
+                  <option value="Gio">Giovedì</option>
+                  <option value="Ven">Venerdì</option>
+                  <option value="Sab">Sabato</option>
+                  <option value="Dom">Domenica</option>
+                </select>
+                <select 
+                  className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" 
+                  value={dailyForm.partOfDay} 
+                  onChange={(e) => setDailyForm({ ...dailyForm, partOfDay: e.target.value })}
+                >
+                  <option value="morning">Mattina</option>
+                  <option value="afternoon">Pomeriggio</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2 items-center">
+                <label className="block text-sm">Ripeti ogni</label>
+                <div>
+                  <input 
+                    type="number" 
+                    min="1" 
+                    max="12"
+                    className="w-20 px-2 py-1 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" 
+                    value={dailyForm.repeat} 
+                    onChange={(e) => setDailyForm({ ...dailyForm, repeat: Math.max(1, Number(e.target.value||1)) })} 
+                  /> 
+                  <span className="ml-1 text-sm">{dailyForm.repeat === 1 ? 'settimana' : 'settimane'}</span>
+                </div>
+              </div>
+              
+              {/* Impostazioni avanzate espandibili */}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setDailyForm(prev => ({ ...prev, showAdvanced: !prev.showAdvanced }))}
+                  className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
+                >
+                  <svg 
+                    className={`w-4 h-4 transition-transform ${dailyForm.showAdvanced ? 'rotate-180' : ''}`} 
+                    fill="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M7 10l5 5 5-5z"/>
+                  </svg>
+                  Impostazioni avanzate
+                </button>
+                
+                {dailyForm.showAdvanced && (
+                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <div className="grid grid-cols-2 gap-2 items-center">
+                      <label className="block text-sm">Offset (settimane)</label>
+                      <input 
+                        type="number" 
+                        min="0" 
+                        max="12"
+                        className="w-full px-2 py-1 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" 
+                        value={dailyForm.offset} 
+                        onChange={(e) => setDailyForm({ ...dailyForm, offset: Math.max(0, Number(e.target.value||0)) })} 
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button 
+                className="px-3 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-700" 
+                onClick={() => setShowDailyForm(false)}
+              >
+                Annulla
+              </button>
+              <button 
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white" 
+                onClick={submitDaily}
+              >
+                {editingDailyIndex === null ? 'Crea' : 'Salva'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </main>
   );
 } 

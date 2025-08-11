@@ -117,6 +117,26 @@ export async function loadUserSettings(userId) {
 }
 
 /**
+ * Carica i dati personali dell'utente da Firebase
+ * @param {string} userId - ID dell'utente
+ * @returns {Promise<Object|null>} - Dati personali o null se non trovati
+ */
+export async function loadPersonalInfo(userId) {
+  if (!userId) return null;
+  try {
+    const snap = await getDoc(doc(db, 'users', userId, 'data', 'settings'));
+    if (snap.exists()) {
+      const data = snap.data();
+      return data.personalInfo || null;
+    }
+    return null;
+  } catch (e) {
+
+    return null;
+  }
+}
+
+/**
  * FASE 1: Scarica solo i dati essenziali per aprire l'app velocemente
  * @param {string} userId - ID dell'utente
  * @returns {Promise<boolean>} - true se l'utente ha completato il setup, false altrimenti
@@ -134,6 +154,7 @@ export async function loadEssentialDataFromServer(userId) {
     
     // Se l'utente ha dati sul server
     const hasCompletedSetup = settings && 
+      settings.personalInfo &&
       settings.baseActivities && 
       settings.sleep && 
       settings.malus;
@@ -145,6 +166,7 @@ export async function loadEssentialDataFromServer(userId) {
       
       const essentialData = {
         ...localData, // Mantieni i dati locali esistenti
+        personalInfo: settings.personalInfo,
         baseActivities: settings.baseActivities,
         sleep: settings.sleep,
         malus: settings.malus,
@@ -318,6 +340,7 @@ export function subscribeEssential(userId, dateKey, onReady) {
       // Aggiorna cache direttamente dai dati Firebase
       const { updateCache } = await import('./storage');
       updateCache(userId, 'settings', {
+        personalInfo: settings.personalInfo || {},
         baseActivities: settings.baseActivities || [],
         sleep: settings.sleep || {},
         malus: settings.malus || [],
@@ -331,10 +354,10 @@ export function subscribeEssential(userId, dateKey, onReady) {
         clearTimeout(fallbackTimer);
         // Fix per setup incompleti: se abbiamo baseActivities ma non dailyActivities, 
         // consideriamo il setup come incompleto (sarà richiesto di nuovo)
-        const hasCompletedSetup = !!(settings.baseActivities && settings.sleep && settings.malus && settings.dailyActivities && settings.dailyActivities.length > 0);
+        const hasCompletedSetup = !!(settings.personalInfo && settings.baseActivities && settings.sleep && settings.malus && settings.dailyActivities && settings.dailyActivities.length > 0);
         
         // FALLBACK URGENTE: se Firebase non ha dailyActivities ma ha altri dati, considera setup completo
-        const hasBasicSetup = !!(settings.baseActivities && settings.sleep && settings.malus);
+        const hasBasicSetup = !!(settings.personalInfo && settings.baseActivities && settings.sleep && settings.malus);
         
         if (hasBasicSetup && (!settings.dailyActivities || settings.dailyActivities.length === 0)) {
 

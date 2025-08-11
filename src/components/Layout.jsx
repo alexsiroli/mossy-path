@@ -25,18 +25,50 @@ export default function Layout({ children }) {
 
   // Funzione per ottenere le iniziali dell'utente
   const getUserInitials = () => {
-    if (!user?.email) return '?';
-    const email = user.email;
-    const name = email.split('@')[0];
-    return name.substring(0, 2).toUpperCase();
+    if (!user?.uid) return '?';
+    
+    // Carica i dati personali dal localStorage
+    const userData = load(user.uid);
+    const { personalInfo } = userData || {};
+    
+    // Se abbiamo nome e cognome, usa le loro iniziali
+    if (personalInfo?.firstName && personalInfo?.lastName) {
+      const firstInitial = personalInfo.firstName.charAt(0).toUpperCase();
+      const lastInitial = personalInfo.lastName.charAt(0).toUpperCase();
+      return `${firstInitial}${lastInitial}`;
+    }
+    
+    // Fallback: usa le prime due lettere dell'email
+    if (user?.email) {
+      const email = user.email;
+      const name = email.split('@')[0];
+      return name.substring(0, 2).toUpperCase();
+    }
+    
+    return '?';
   };
   
   // Funzione per ottenere il nome dell'utente
   const getUserName = () => {
-    if (!user?.email) return 'Utente';
-    const email = user.email;
-    const name = email.split('@')[0];
-    return name.charAt(0).toUpperCase() + name.slice(1);
+    if (!user?.uid) return 'Utente';
+    
+    // Carica i dati personali dal localStorage
+    const userData = load(user.uid);
+    const { personalInfo } = userData || {};
+    
+    // Se abbiamo nome e cognome, usali
+    if (personalInfo?.firstName && personalInfo?.lastName) {
+      return `${personalInfo.firstName} ${personalInfo.lastName}`;
+    }
+    
+    // Fallback: usa la prima parte dell'email
+    if (user?.email) {
+      const email = user.email;
+      const name = email.split('@')[0];
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    }
+    
+    return 'Utente';
   };
   
   // Funzione per gestire il logout
@@ -111,15 +143,50 @@ export default function Layout({ children }) {
             >
               <XMarkIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
             </button>
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-3">
               <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center text-white text-lg font-semibold">
                 {getUserInitials()}
               </div>
-              <div>
+              <div className="flex-1">
                 <h3 className="font-bold text-gray-900 dark:text-white">{getUserName()}</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email}</p>
               </div>
             </div>
+            
+            {/* Informazioni personali */}
+            {(() => {
+              const userData = load(user?.uid);
+              const { personalInfo } = userData || {};
+              
+              if (personalInfo?.firstName && personalInfo?.lastName) {
+                return (
+                  <div className="space-y-2 mb-3">
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Nome:</span>
+                        <span className="ml-1 text-gray-700 dark:text-gray-300 font-medium">{personalInfo.firstName}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Cognome:</span>
+                        <span className="ml-1 text-gray-700 dark:text-gray-300 font-medium">{personalInfo.lastName}</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Età:</span>
+                        <span className="ml-1 text-gray-700 dark:text-gray-300 font-medium">{personalInfo.age} anni</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Città:</span>
+                        <span className="ml-1 text-gray-700 dark:text-gray-300 font-medium">{personalInfo.city}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+            
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
               Account creato il: {user?.metadata?.creationTime ? new Date(user.metadata.creationTime).toLocaleDateString('it-IT') : 'Data non disponibile'}
             </p>

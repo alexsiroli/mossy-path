@@ -22,7 +22,7 @@ export default function Activities() {
   const [activities, setActivities] = useState(initial.dailyActivities || []);
   const [showForm, setShowForm] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
-  const [form, setForm] = useState({ name: '', weekday: 'Lun', partOfDay: 'morning', repeat: 1, offset: 0 });
+  const [form, setForm] = useState({ name: '', weekday: 'Lun', partOfDay: 'morning', repeat: 1, offset: 0, showAdvanced: false });
 
   useEffect(() => {
     const d = load(user?.uid);
@@ -41,14 +41,14 @@ export default function Activities() {
 
   const openNew = () => {
     setEditingIndex(null);
-    setForm({ name: '', weekday: 'Lun', partOfDay: 'morning', repeat: 1, offset: 0 });
+    setForm({ name: '', weekday: 'Lun', partOfDay: 'morning', repeat: 1, offset: 0, showAdvanced: false });
     setShowForm(true);
   };
 
   const openEdit = (idx) => {
     setEditingIndex(idx);
     const a = activities[idx];
-    setForm({ name: a.name, weekday: a.weekday || 'Lun', partOfDay: a.partOfDay || 'morning', repeat: a.repeat || 1, offset: a.offset || 0 });
+    setForm({ name: a.name, weekday: a.weekday || 'Lun', partOfDay: a.partOfDay || 'morning', repeat: a.repeat || 1, offset: a.offset || 0, showAdvanced: false });
     setShowForm(true);
   };
 
@@ -105,7 +105,7 @@ export default function Activities() {
                         <li key={idx} className="flex items-center justify-between p-2 bg-white/20 dark:bg-black/20 rounded-lg">
                           <div>
                             <div className="font-medium">{a.name}</div>
-                            <div className="text-xs text-gray-600 dark:text-gray-400">Ogni {a.repeat || 1} sett.{(a.offset || 0) > 0 ? ` (offset ${a.offset})` : ''}</div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400">Ogni {a.repeat || 1} {(a.repeat || 1) === 1 ? 'settimana' : 'settimane'}{(a.offset || 0) > 0 ? ` (offset ${a.offset})` : ''}</div>
                           </div>
                           <div className="flex gap-2">
                             <button className="p-1 rounded hover:bg-white/20" onClick={() => openEdit(globalIdx)} aria-label="Modifica"><PencilIcon className="h-4 w-4" /></button>
@@ -141,12 +141,43 @@ export default function Activities() {
               <div className="grid grid-cols-2 gap-2 items-center">
                 <label className="block text-sm">Ripeti ogni</label>
                 <div>
-                  <input type="number" min="1" className="w-20 px-2 py-1 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" value={form.repeat} onChange={(e) => setForm({ ...form, repeat: Math.max(1, Number(e.target.value||1)) })} /> <span className="ml-1 text-sm">sett.</span>
+                  <input type="number" min="1" max="12" className="w-20 px-2 py-1 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" value={form.repeat} onChange={(e) => setForm({ ...form, repeat: Math.max(1, Number(e.target.value||1)) })} /> 
+                  <span className="ml-1 text-sm">{form.repeat === 1 ? 'settimana' : 'settimane'}</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 items-center">
-                <label className="block text-sm">Offset (settimane)</label>
-                <input type="number" min="0" className="w-20 px-2 py-1 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" value={form.offset} onChange={(e) => setForm({ ...form, offset: Math.max(0, Number(e.target.value||0)) })} />
+              
+              {/* Impostazioni avanzate espandibili */}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setForm(prev => ({ ...prev, showAdvanced: !prev.showAdvanced }))}
+                  className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
+                >
+                  <svg 
+                    className={`w-4 h-4 transition-transform ${form.showAdvanced ? 'rotate-180' : ''}`} 
+                    fill="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M7 10l5 5 5-5z"/>
+                  </svg>
+                  Impostazioni avanzate
+                </button>
+                
+                {form.showAdvanced && (
+                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <div className="grid grid-cols-2 gap-2 items-center">
+                      <label className="block text-sm">Offset (settimane)</label>
+                      <input 
+                        type="number" 
+                        min="0" 
+                        max="12"
+                        className="w-full px-2 py-1 border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" 
+                        value={form.offset} 
+                        onChange={(e) => setForm({ ...form, offset: Math.max(0, Number(e.target.value||0)) })} 
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div className="mt-4 flex justify-end gap-2">
