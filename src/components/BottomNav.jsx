@@ -6,7 +6,7 @@ export default function BottomNav() {
     { to: '/todos', icon: CheckCircleIcon, label: 'To Do\'s' },
     { to: '/calendar', icon: CalendarIcon, label: 'Calendario' },
     { to: '/today', icon: HomeIcon, label: 'Oggi' },
-    { to: '/garden', icon: SparklesIcon, label: 'Giardino' },
+    { to: '/collectibles', icon: SparklesIcon, label: 'Collezionabili' },
     { to: '/activities', icon: ChartBarIcon, label: 'Attività' },
   ];
   return (

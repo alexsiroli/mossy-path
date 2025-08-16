@@ -5,7 +5,7 @@ import Dashboard from './components/Dashboard';
 import Todos from './components/Todos';
 import Calendar from './components/Calendar';
 import Today from './components/Today';
-import Garden from './components/Garden';
+import Collectibles from './components/Collectibles';
 import Activities from './components/Activities';
 import Layout from './components/Layout';
 import Login from './components/Login';
@@ -129,7 +129,7 @@ export default function App() {
         <Route path="todos" element={<Todos />} />
         <Route path="calendar" element={<Calendar />} />
         <Route path="today" element={<Today />} />
-        <Route path="garden" element={<Garden />} />
+        <Route path="collectibles" element={<Collectibles />} />
         <Route path="activities" element={<Activities />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

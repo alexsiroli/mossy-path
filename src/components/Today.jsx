@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { load, save } from '../utils/storage';
-import { saveCompletions as saveCompletionsRemote } from '../utils/db';
+import { saveCompletions as saveCompletionsRemote, loadCompletions, saveDailySpecific, loadDailySpecific } from '../utils/db';
 import TaskItem from './TaskItem';
 import SectionCard from './SectionCard';
 import { calculatePoints, getProgressColor } from '../utils/points';
@@ -98,23 +98,65 @@ export default function Today() {
   const dateKey = formatKey(viewDate);
 
   const [completions, setCompletions] = useState(() => data.completions?.[dateKey] || {});
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // Refresh completions when changing day or loading new data
+  // Carica le completions e dailySpecific dal server (database come fonte principale)
   useEffect(() => {
-    setCompletions(load(user?.uid).completions?.[dateKey] || {});
-  }, [dateKey, user?.uid]);
+    if (user?.uid && dateKey) {
+      const loadFromServer = async () => {
+        try {
+          // Carica entrambi i tipi di dati dal server
+          const [serverCompletions, serverDailySpecific] = await Promise.all([
+            loadCompletions(user.uid, dateKey),
+            loadDailySpecific(user.uid, dateKey)
+          ]);
+          
+          setCompletions(serverCompletions || {});
+          
+          // Aggiorna i dati locali con quelli del server
+          const currentData = load(user?.uid);
+          const updatedData = {
+            ...currentData,
+            completions: { ...(currentData.completions || {}), [dateKey]: serverCompletions || {} },
+            dailySpecific: { ...(currentData.dailySpecific || {}), [dateKey]: serverDailySpecific || [] }
+          };
+          
+          // Cache minima nel localStorage solo per performance
+          save(updatedData, user.uid);
+          setData(updatedData);
+        } catch (error) {
+          console.error('Errore nel caricamento dati dal server:', error);
+          // Fallback al localStorage solo in caso di errore di rete
+          const localData = load(user?.uid);
+          const localCompletions = localData.completions?.[dateKey] || {};
+          setCompletions(localCompletions);
+        }
+        
+        // Marca il caricamento iniziale come completato
+        setIsInitialLoad(false);
+      };
+      
+      loadFromServer();
+    }
+  }, [user?.uid, dateKey]);
 
-  // Persist completions
+  // Salva le completions sul server quando cambiano (database come fonte principale)
   useEffect(() => {
-    const current = load(user?.uid);
-    save({
-      ...current,
-      completions: { ...(current.completions || {}), [dateKey]: completions },
-    }, user?.uid);
-    setData(load(user?.uid));
-
-    void saveCompletionsRemote(user?.uid, dateKey, completions);
-  }, [completions, dateKey, user?.uid]);
+    if (user?.uid && dateKey && Object.keys(completions).length > 0 && !isInitialLoad) {
+      // Salva immediatamente sul server
+      void saveCompletionsRemote(user?.uid, dateKey, completions);
+      
+      // Cache minima nel localStorage solo per performance offline
+      const current = load(user?.uid);
+      save({
+        ...current,
+        completions: { ...(current.completions || {}), [dateKey]: completions },
+      }, user?.uid);
+      
+      // Aggiorna i dati locali
+      setData(load(user?.uid));
+    }
+  }, [completions, dateKey, user?.uid, isInitialLoad]);
 
   // Animazione di entrata
   useEffect(() => {
@@ -239,8 +281,27 @@ export default function Today() {
     malusTasks.push(obj);
   });
 
-  const handleToggle = (key, value) => {
+  const handleToggle = async (key, value) => {
+    // Aggiorna lo stato locale immediatamente per UX fluida
     setCompletions((prev) => ({ ...prev, [key]: value }));
+    
+    // Salva immediatamente sul server (database come fonte principale)
+    if (user?.uid && dateKey) {
+      try {
+        const newCompletions = { ...completions, [key]: value };
+        await saveCompletionsRemote(user.uid, dateKey, newCompletions);
+        
+        // Cache minima nel localStorage solo per performance offline
+        const current = load(user?.uid);
+        save({
+          ...current,
+          completions: { ...(current.completions || {}), [dateKey]: newCompletions },
+        }, user.uid);
+      } catch (error) {
+        console.error('Errore nel salvataggio sul server:', error);
+        // In caso di errore, mantieni i dati locali come fallback
+      }
+    }
   };
 
   const countPoints = () => {
@@ -251,6 +312,30 @@ export default function Today() {
   const [newPart, setNewPart] = useState('morning');
 
   const addSpecific = () => {};
+
+  const deleteSpecificActivity = async (specIndex) => {
+    if (!user?.uid || !dateKey) return;
+    
+    try {
+      const updated = load(user?.uid);
+      const list = (updated.dailySpecific?.[dateKey] || []).filter(
+        (_, i) => i !== specIndex
+      );
+      const newDailySpecific = {
+        ...(updated.dailySpecific || {}),
+        [dateKey]: list,
+      };
+      
+      // Salva immediatamente sul server (database come fonte principale)
+      await saveDailySpecific(user.uid, dateKey, list);
+      
+      // Cache minima nel localStorage solo per performance offline
+      save({ ...updated, dailySpecific: newDailySpecific }, user?.uid);
+      setData(load(user?.uid));
+    } catch (error) {
+      console.error('Errore nell\'eliminazione dell\'attività specifica:', error);
+    }
+  };
 
   const changeDay = (delta) => {
     // Recalcola i limiti rispetto all'"oggi" corrente (con cutoff 5:00)
@@ -367,18 +452,7 @@ export default function Today() {
                     hideCheckbox={isFuture}
                     onDelete={
                       t.isSpecific && !isFuture
-                        ? () => {
-                            const updated = load(user?.uid);
-                            const list = (updated.dailySpecific?.[dateKey] || []).filter(
-                              (_, i) => i !== t.specIndex
-                            );
-                            const newDailySpecific = {
-                              ...(updated.dailySpecific || {}),
-                              [dateKey]: list,
-                            };
-                            save({ ...updated, dailySpecific: newDailySpecific }, user?.uid);
-                            setData(load(user?.uid));
-                          }
+                        ? () => deleteSpecificActivity(t.specIndex)
                         : undefined
                     }
                   />
@@ -389,7 +463,7 @@ export default function Today() {
           
           {/* Pomeriggio */}
           {afternoonTasks.length > 0 && (
-            <SectionCard title="Pomeriggio" collapsible expanded={expanded.afternoon} onToggle={() => toggle('afternoon')} className="bg-gradient-to-br from-orange-500/40 to-orange-600/30 ring-1 ring-orange-500/40 dark:ring-orange-600/40">
+            <SectionCard title="Pomeriggio" collapsible expanded={expanded.afternoon} onToggle={() => toggle('afternoon')} className="bg-gradient-to-br from-orange-500/40 to-amber-600/30 ring-1 ring-orange-500/40 dark:ring-orange-600/40">
               <div className="space-y-3">
                 {afternoonTasks.map((t) => (
                   <TaskItem
@@ -400,18 +474,7 @@ export default function Today() {
                     hideCheckbox={isFuture}
                     onDelete={
                       t.isSpecific && !isFuture
-                        ? () => {
-                            const updated = load(user?.uid);
-                            const list = (updated.dailySpecific?.[dateKey] || []).filter(
-                              (_, i) => i !== t.specIndex
-                            );
-                            const newDailySpecific = {
-                              ...(updated.dailySpecific || {}),
-                              [dateKey]: list,
-                            };
-                            save({ ...updated, dailySpecific: newDailySpecific }, user?.uid);
-                            setData(load(user?.uid));
-                          }
+                        ? () => deleteSpecificActivity(t.specIndex)
                         : undefined
                     }
                   />

@@ -105,6 +105,44 @@ export async function saveCompletions(userId, dateKey, completions) {
   }
 }
 
+export async function loadCompletions(userId, dateKey) {
+  if (!userId || !dateKey) return {};
+  
+  try {
+    const ref = doc(db, 'users', userId, 'completions', dateKey);
+    const snap = await getDoc(ref);
+    return snap.exists() ? snap.data().completions || {} : {};
+  } catch (e) {
+    console.error('Errore nel caricamento completions:', e);
+    return {};
+  }
+}
+
+export async function saveDailySpecific(userId, dateKey, dailySpecific) {
+  if (!userId || !dateKey) return;
+  
+  try {
+    const ref = doc(db, 'users', userId, 'dailySpecific', dateKey);
+    await setDoc(ref, { dailySpecific }, { merge: true });
+  } catch (e) {
+    // Fallback con enqueueWrite se la connessione diretta fallisce
+    enqueueWrite({ pathSegments: ['users', userId, 'dailySpecific', dateKey], data: { dailySpecific }, options: { merge: true } });
+  }
+}
+
+export async function loadDailySpecific(userId, dateKey) {
+  if (!userId || !dateKey) return [];
+  
+  try {
+    const ref = doc(db, 'users', userId, 'dailySpecific', dateKey);
+    const snap = await getDoc(ref);
+    return snap.exists() ? snap.data().dailySpecific || [] : [];
+  } catch (e) {
+    console.error('Errore nel caricamento dailySpecific:', e);
+    return [];
+  }
+}
+
 export async function loadUserSettings(userId) {
   if (!userId) return null;
   try {
